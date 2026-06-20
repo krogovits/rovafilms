@@ -243,7 +243,7 @@ body.dark .rate-pct{color:#888}
 <script>
 var CLIENT_ID = "18842091843-lte8radv837g95b8c8b5rorg43d8859q.apps.googleusercontent.com";
 var SHEET_ID_QC = "181YVMQ9eYqu0GRXfaOLUv8D3gkdCCt72ttwHYCiqiLA";
-var SHEET_ID_BC = "1j_Vswc3Qwnk6uSXAePV8hHAzIHx4x0ngMtl1zRZEov0";
+var SHEET_ID_BC = "1pDlT8T0nQwn7EvSTWhJQ1HSNDAHGxv7iMOdgpoyEKGQ";
 var SHEET_ID = SHEET_ID_QC;
 var PORTFOLIO = "rovafilms.com";
 var IG_KEVIN = "https://www.instagram.com/kevinrogovits/";
@@ -310,24 +310,86 @@ var BODIES = {
 
 
 
-var BC_HOTEL_EN = function(n, feature) {
-  return "Hi,\n\nWe noticed **" + n + "** has a strong visual identity already, the kind of foundation most properties take years to build.\n\nThe brands that dominate the luxury space right now all have one thing in common: content that makes you feel something before you even arrive. That's exactly the kind of content we create.\n\n**We're Kevin and Valeria, a duo with a background in major film productions and high-end editorial photography**, specializing in **cinematic photo, video, and drone content** for hotels and premium stays.\n\nWe'll be in the area between **July 9-18** and would love to set up a collaboration: a stay in exchange for a curated content package, deliverables and usage kept simple and agreed upfront.\n\n*We have a few specific ideas in mind for " + n + ".* ***Would it make sense to send them over?***\n\nWarm regards,\n" + sigEN() + "\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*";
-};
-var BC_VILLA_EN = function(n, feature) {
-  return "Hi,\n\n**" + n + "** caught our eye recently, the design and setting have a character most places spend years trying to build.\n\nThe stays that stand out in this space right now all have one thing in common: content that makes you feel something before you even arrive. That's exactly the kind of content we create.\n\n**We're Kevin and Valeria, a duo with a background in major film productions and high-end editorial photography**, specializing in **cinematic photo, video, and drone content** for chalets, cottages, and private stays.\n\nWe'll be in the area between **July 9-18** and would love to set up a collaboration: a stay in exchange for a curated content package, deliverables and usage kept simple and agreed upfront.\n\n*We have a few specific ideas in mind for " + n + ".* ***Would it make sense to send them over?***\n\nWarm regards,\n" + sigEN() + "\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*";
-};
-var BC_HOTEL_FR = function(n, feature) {
-  return "Bonjour,\n\nNous avons remarqu\u00e9 que **" + n + "** a d\u00e9j\u00e0 une identit\u00e9 visuelle forte, le genre de fondation que la plupart des \u00e9tablissements mettent des ann\u00e9es \u00e0 construire.\n\nLes marques qui dominent l'univers du luxe en ce moment ont toutes un point commun\u00a0: un contenu qui vous fait ressentir quelque chose avant m\u00eame d'arriver. C'est exactement ce que nous cr\u00e9ons.\n\n**Nous sommes Kevin et Valeria, un duo issu des grandes productions cin\u00e9matographiques et de la photographie \u00e9ditoriale haut de gamme**, sp\u00e9cialis\u00e9s en **photo, vid\u00e9o et contenu drone cin\u00e9matique** pour h\u00f4tels et s\u00e9jours premium.\n\nNous serons dans la r\u00e9gion du **9 au 18 juillet** et aimerions organiser une collaboration\u00a0: un s\u00e9jour en \u00e9change d'un ensemble de contenu sur mesure, livrables et droits d'usage gard\u00e9s simples et convenus en amont.\n\n*Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + ".* ***\u00c7a vous int\u00e9resse qu'on vous les envoie\u00a0?***\n\nBien cordialement,\n" + sigFR() + "\n\n*P.S. Si nous n'avons pas contact\u00e9 la bonne personne, une redirection rapide serait tr\u00e8s appr\u00e9ci\u00e9e.*";
-};
-var BC_VILLA_FR = function(n, feature) {
-  return "Bonjour,\n\n**" + n + "** a immediiatement retenu notre attention r\u00e9cemment, le design et le cadre ont un caract\u00e8re que la plupart des endroits mettent des ann\u00e9es \u00e0 construire.\n\nLes s\u00e9jours qui se distinguent dans cet univers ont tous un point commun\u00a0: un contenu qui vous fait ressentir quelque chose avant m\u00eame d'arriver. C'est exactement ce que nous cr\u00e9ons.\n\n**Nous sommes Kevin et Valeria, un duo issu des grandes productions cin\u00e9matographiques et de la photographie \u00e9ditoriale haut de gamme**, sp\u00e9cialis\u00e9s en **photo, vid\u00e9o et contenu drone cin\u00e9matique** pour chalets, cottages et s\u00e9jours priv\u00e9s.\n\nNous serons dans la r\u00e9gion du **9 au 18 juillet** et aimerions organiser une collaboration\u00a0: un s\u00e9jour en \u00e9change d'un ensemble de contenu sur mesure, livrables et droits d'usage gard\u00e9s simples et convenus en amont.\n\n*Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + ".* ***\u00c7a vous int\u00e9resse qu'on vous les envoie\u00a0?***\n\nBien cordialement,\n" + sigFR() + "\n\n*P.S. Si nous n'avons pas contact\u00e9 la bonne personne, une redirection rapide serait tr\u00e8s appr\u00e9ci\u00e9e.*";
+var BC_FEATURE_MAP = {
+  1: {v:"B", den:"The river confluence right outside your cabin", dfr:"La confluence des rivières devant votre cabane", feat:"Riverside cabins at river confluence, Tantalus Range backdrop"},
+  2: {v:"A", feat:"Thermal mineral pools since 1886, lakefront marina"},
+  3: {v:"B", den:"The tenthouse boardwalk above the ocean", dfr:"La passerelle suspendue au-dessus de l'océan", feat:"Tenthouse suites on cliffside boardwalk above the Pacific"},
+  4: {v:"A", feat:"Private marina, 31 ocean-view villas, award-winning spa"},
+  5: {v:"B", den:"The Sussex manor gardens and farm-to-table setting", dfr:"Les jardins du manoir et le restaurant ferme-à-table", feat:"Relais & Chateaux Sussex manor, farm-to-table gardens"},
+  6: {v:"B", den:"The panoramic penthouse overlooking the marina", dfr:"Le penthouse panoramique sur la marina", feat:"Panoramic penthouse, floor-to-ceiling marina views"},
+  7: {v:"A", feat:"30-acre gardens, heated pool, European countryside style"},
+  8: {v:"A", feat:"20 oceanfront rooms, Madrona del Mar spa, ferry dock"},
+  9: {v:"B", den:"The summit terrace with the #1 ranked view in Canada", dfr:"La terrasse au sommet avec la vue classée #1 au Canada", feat:"Summit terrace, TripAdvisor #1 view Canada, Malahat Ridge"},
+  10: {v:"B", den:"The underwater dive platform off the private dock", dfr:"La plateforme de plongée au bout du quai privé", feat:"Only PADI dive resort Canada, private dock, art gallery"},
+  11: {v:"B", den:"The culinary gardens leading to the wild coastline", dfr:"Les jardins culinaires face à la côte sauvage", feat:"Wild coastline, culinary gardens, ocean-view dining"},
+  12: {v:"B", den:"The vineyard rows and estate setting", dfr:"Les rangées de vignes et le cadre du domaine", feat:"Italian family vineyard, estate inn, highly photogenic"},
+  13: {v:"B", den:"The suspended spheres in the forest canopy", dfr:"Les sphères suspendues dans la forêt", feat:"Forest-suspended spheres, one-of-a-kind concept worldwide"},
+  14: {v:"B", den:"The safari tents on Clayoquot Sound", dfr:"Les tentes safari sur le Clayoquot Sound", feat:"3 MICHELIN Keys, safari tents on Clayoquot Sound, heli/boat access"},
+  15: {v:"B", den:"The floor-to-ceiling ocean views from every single room", dfr:"La vue océan du sol au plafond dans chaque chambre", feat:"Relais & Chateaux, ocean view from every room, storm-watching deck"},
+  16: {v:"B", den:"The private hot tub cottages steps from the surf", dfr:"Les cottages avec jacuzzi privé au bord du surf", feat:"Private hot tub cottages steps from Cox Bay surf break"},
+  17: {v:"B", den:"The floating sauna on the marina", dfr:"Le sauna flottant sur la marina", feat:"Floating sauna featured in TIME Magazine, marina, heli tours"},
+  18: {v:"A", feat:"Family-owned boutique 40 years, facing Vancouver Art Gallery"},
+  19: {v:"A", feat:"Corner Robson/Richards boutique, Eggersmann German kitchens"},
+  20: {v:"A", feat:"New York loft style, Robson Street, AAA 4 Diamond"},
+  21: {v:"B", den:"The cliffside cottages above the Juan de Fuca Strait", dfr:"Les cottages surplombant le détroit de Juan de Fuca", feat:"Cliffside cottages above the Pacific, Juan de Fuca Strait views"},
+  27: {v:"B", den:"The Kadenwood ski-in architectural chalets", dfr:"Les chalets architecturaux ski-in de Kadenwood", feat:"Kadenwood architectural ski-in chalets, VIP concierge"},
+  28: {v:"A", feat:"High-end chalet portfolio, luxury real estate properties"},
+  29: {v:"A", feat:"Ski-in-ski-out chalets, 25 years experience in Whistler"},
+  30: {v:"A", feat:"3 signature lodges, 125 suites, Lespri Group"},
+  31: {v:"A", feat:"70+ properties, ex-Wickaninnish family portfolio, 20+ years"}
 };
 
-var BODIES_BC = {
-  hotel: { EN: BC_HOTEL_EN, FR: BC_HOTEL_FR },
-  villa: { EN: BC_VILLA_EN, FR: BC_VILLA_FR },
-  "3A": BODIES.hotel ? {EN: BC_HOTEL_EN, FR: BC_HOTEL_FR} : null
+var BC_HOTEL_A_EN = function(n) {
+  return "Hi,\n\nWe noticed **" + n + "** has a strong visual identity already, the kind of foundation most properties take years to build.\n\nHotels are now competing with boutique stays and private villas, not just other chains. The ones pulling ahead share one thing: content that makes you feel something before you even arrive. That's exactly what we create. *(see [rovafilms.com](https://rovafilms.com))*\n\n**We're Kevin and Valeria, a duo with a background in major film productions and high-end editorial photography**, specializing in **cinematic photo, video, and drone content** for hotels and premium stays.\n\nWe'll be in the area between **July 9-18** and would love to set up a collaboration: a stay in exchange for a curated content package, deliverables and usage kept simple and agreed upfront.\n\n*We have a few specific ideas in mind for " + n + ".* ***Would it make sense to send them over?***\n\nWarm regards,\n" + sigEN() + "\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*";
 };
+var BC_HOTEL_B_EN = function(n, detail) {
+  return "Hi,\n\nWe noticed **" + n + "** has a strong visual identity already, the kind of foundation most properties take years to build. **" + detail + "** in particular would translate beautifully on camera, slow tracking shots through the space, the kind of footage that makes someone stop scrolling.\n\nHotels are now competing with boutique stays and private villas, not just other chains. The ones pulling ahead share one thing: content that makes you feel something before you even arrive. That's exactly what we create. *(see [rovafilms.com](https://rovafilms.com))*\n\n**We're Kevin and Valeria, a duo with a background in major film productions and high-end editorial photography**, specializing in **cinematic photo, video, and drone content** for hotels and premium stays.\n\nWe'll be in the area between **July 9-18** and would love to set up a collaboration: a stay in exchange for a curated content package, deliverables and usage kept simple and agreed upfront.\n\n*We have a few specific ideas in mind for " + n + ".* ***Would it make sense to send them over?***\n\nWarm regards,\n" + sigEN() + "\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*";
+};
+var BC_VILLA_A_EN = function(n) {
+  return "Hi,\n\n**" + n + "** caught our eye recently, the design and setting have a character most places spend years trying to build.\n\nProperties at this level often have everything already, the view, the design, the feeling. What makes the difference is content that lets guests feel it before they even arrive. That's exactly what we create. *(see [rovafilms.com](https://rovafilms.com))*\n\n**We're Kevin and Valeria, a duo with a background in major film productions and high-end editorial photography**, specializing in **cinematic photo, video, and drone content** for chalets, cottages, and private stays.\n\nWe'll be in the area between **July 9-18** and would love to set up a collaboration: a stay in exchange for a curated content package, deliverables and usage kept simple and agreed upfront.\n\n*We have a few specific ideas in mind for " + n + ".* ***Would it make sense to send them over?***\n\nWarm regards,\n" + sigEN() + "\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*";
+};
+var BC_VILLA_B_EN = function(n, detail) {
+  return "Hi,\n\n**" + n + "** caught our eye recently, the design and setting have a character most places spend years trying to build. **" + detail + "** would be stunning in motion, drone establishing shots that show the scale, slow pans that let the place breathe.\n\nProperties at this level often have everything already, the view, the design, the feeling. What makes the difference is content that lets guests feel it before they even arrive. That's exactly what we create. *(see [rovafilms.com](https://rovafilms.com))*\n\n**We're Kevin and Valeria, a duo with a background in major film productions and high-end editorial photography**, specializing in **cinematic photo, video, and drone content** for chalets, cottages, and private stays.\n\nWe'll be in the area between **July 9-18** and would love to set up a collaboration: a stay in exchange for a curated content package, deliverables and usage kept simple and agreed upfront.\n\n*We have a few specific ideas in mind for " + n + ".* ***Would it make sense to send them over?***\n\nWarm regards,\n" + sigEN() + "\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*";
+};
+var BC_HOTEL_A_FR = function(n) {
+  return "Bonjour,\n\nNous avons remarqu\u00e9 que **" + n + "** a d\u00e9j\u00e0 une identit\u00e9 visuelle forte, le genre de fondation que la plupart des \u00e9tablissements mettent des ann\u00e9es \u00e0 construire.\n\nLes h\u00f4tels sont d\u00e9sormais en comp\u00e9tition avec les s\u00e9jours boutique et les villas priv\u00e9es, pas seulement avec d'autres cha\u00eenes. Ceux qui se d\u00e9marquent ont tous un point commun\u00a0: un contenu qui vous fait ressentir quelque chose avant m\u00eame d'arriver. C'est exactement ce que nous cr\u00e9ons. *(voir [rovafilms.com](https://rovafilms.com))*\n\n**Nous sommes Kevin et Valeria, un duo issu des grandes productions cin\u00e9matographiques et de la photographie \u00e9ditoriale haut de gamme**, sp\u00e9cialis\u00e9s en **photo, vid\u00e9o et contenu drone cin\u00e9matique** pour h\u00f4tels et s\u00e9jours premium.\n\nNous serons dans la r\u00e9gion du **9 au 18 juillet** et aimerions organiser une collaboration\u00a0: un s\u00e9jour en \u00e9change d'un ensemble de contenu sur mesure, livrables et droits d'usage gard\u00e9s simples et convenus en amont.\n\n*Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + ".* ***\u00c7a vous int\u00e9resse qu'on vous les envoie\u00a0?***\n\nBien cordialement,\n" + sigFR() + "\n\n*P.S. Si nous n'avons pas contact\u00e9 la bonne personne, une redirection rapide serait tr\u00e8s appr\u00e9ci\u00e9e.*";
+};
+var BC_HOTEL_B_FR = function(n, detail) {
+  return "Bonjour,\n\nNous avons remarqu\u00e9 que **" + n + "** a d\u00e9j\u00e0 une identit\u00e9 visuelle forte, le genre de fondation que la plupart des \u00e9tablissements mettent des ann\u00e9es \u00e0 construire. **" + detail + "** en particulier se traduirait magnifiquement \u00e0 la cam\u00e9ra, des travelings lents \u00e0 travers l'espace, le genre d'images qui font arr\u00eater le scroll.\n\nLes h\u00f4tels sont d\u00e9sormais en comp\u00e9tition avec les s\u00e9jours boutique et les villas priv\u00e9es, pas seulement avec d'autres cha\u00eenes. Ceux qui se d\u00e9marquent ont tous un point commun\u00a0: un contenu qui vous fait ressentir quelque chose avant m\u00eame d'arriver. C'est exactement ce que nous cr\u00e9ons. *(voir [rovafilms.com](https://rovafilms.com))*\n\n**Nous sommes Kevin et Valeria, un duo issu des grandes productions cin\u00e9matographiques et de la photographie \u00e9ditoriale haut de gamme**, sp\u00e9cialis\u00e9s en **photo, vid\u00e9o et contenu drone cin\u00e9matique** pour h\u00f4tels et s\u00e9jours premium.\n\nNous serons dans la r\u00e9gion du **9 au 18 juillet** et aimerions organiser une collaboration\u00a0: un s\u00e9jour en \u00e9change d'un ensemble de contenu sur mesure, livrables et droits d'usage gard\u00e9s simples et convenus en amont.\n\n*Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + ".* ***\u00c7a vous int\u00e9resse qu'on vous les envoie\u00a0?***\n\nBien cordialement,\n" + sigFR() + "\n\n*P.S. Si nous n'avons pas contact\u00e9 la bonne personne, une redirection rapide serait tr\u00e8s appr\u00e9ci\u00e9e.*";
+};
+var BC_VILLA_A_FR = function(n) {
+  return "Bonjour,\n\n**" + n + "** a imm\u00e9diatement retenu notre attention r\u00e9cemment, le design et le cadre ont un caract\u00e8re que la plupart des endroits mettent des ann\u00e9es \u00e0 construire.\n\nLes propri\u00e9t\u00e9s de ce niveau ont souvent d\u00e9j\u00e0 tout, la vue, le design, l'atmosph\u00e8re. Ce qui fait la diff\u00e9rence, c'est un contenu qui permet aux clients de le ressentir avant m\u00eame d'arriver. C'est exactement ce que nous cr\u00e9ons. *(voir [rovafilms.com](https://rovafilms.com))*\n\n**Nous sommes Kevin et Valeria, un duo issu des grandes productions cin\u00e9matographiques et de la photographie \u00e9ditoriale haut de gamme**, sp\u00e9cialis\u00e9s en **photo, vid\u00e9o et contenu drone cin\u00e9matique** pour chalets, cottages et s\u00e9jours priv\u00e9s.\n\nNous serons dans la r\u00e9gion du **9 au 18 juillet** et aimerions organiser une collaboration\u00a0: un s\u00e9jour en \u00e9change d'un ensemble de contenu sur mesure, livrables et droits d'usage gard\u00e9s simples et convenus en amont.\n\n*Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + ".* ***\u00c7a vous int\u00e9resse qu'on vous les envoie\u00a0?***\n\nBien cordialement,\n" + sigFR() + "\n\n*P.S. Si nous n'avons pas contact\u00e9 la bonne personne, une redirection rapide serait tr\u00e8s appr\u00e9ci\u00e9e.*";
+};
+var BC_VILLA_B_FR = function(n, detail) {
+  return "Bonjour,\n\n**" + n + "** a imm\u00e9diatement retenu notre attention r\u00e9cemment, le design et le cadre ont un caract\u00e8re que la plupart des endroits mettent des ann\u00e9es \u00e0 construire. **" + detail + "** serait magnifique en mouvement, des plans drone qui montrent l'\u00e9chelle du lieu, des panoramiques lents qui laissent respirer l'endroit.\n\nLes propri\u00e9t\u00e9s de ce niveau ont souvent d\u00e9j\u00e0 tout, la vue, le design, l'atmosph\u00e8re. Ce qui fait la diff\u00e9rence, c'est un contenu qui permet aux clients de le ressentir avant m\u00eame d'arriver. C'est exactement ce que nous cr\u00e9ons. *(voir [rovafilms.com](https://rovafilms.com))*\n\n**Nous sommes Kevin et Valeria, un duo issu des grandes productions cin\u00e9matographiques et de la photographie \u00e9ditoriale haut de gamme**, sp\u00e9cialis\u00e9s en **photo, vid\u00e9o et contenu drone cin\u00e9matique** pour chalets, cottages et s\u00e9jours priv\u00e9s.\n\nNous serons dans la r\u00e9gion du **9 au 18 juillet** et aimerions organiser une collaboration\u00a0: un s\u00e9jour en \u00e9change d'un ensemble de contenu sur mesure, livrables et droits d'usage gard\u00e9s simples et convenus en amont.\n\n*Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + ".* ***\u00c7a vous int\u00e9resse qu'on vous les envoie\u00a0?***\n\nBien cordialement,\n" + sigFR() + "\n\n*P.S. Si nous n'avons pas contact\u00e9 la bonne personne, une redirection rapide serait tr\u00e8s appr\u00e9ci\u00e9e.*";
+};
+var BODIES_BC = {
+  hotel: {
+    EN: function(p) {
+      var fm = BC_FEATURE_MAP[p.bcRow] || null;
+      if (fm && fm.v === "B") return BC_HOTEL_B_EN(p.nom, fm.den);
+      return BC_HOTEL_A_EN(p.nom);
+    },
+    FR: function(p) {
+      var fm = BC_FEATURE_MAP[p.bcRow] || null;
+      if (fm && fm.v === "B") return BC_HOTEL_B_FR(p.nom, fm.dfr);
+      return BC_HOTEL_A_FR(p.nom);
+    }
+  },
+  villa: {
+    EN: function(p) {
+      var fm = BC_FEATURE_MAP[p.bcRow] || null;
+      if (fm && fm.v === "B") return BC_VILLA_B_EN(p.nom, fm.den);
+      return BC_VILLA_A_EN(p.nom);
+    },
+    FR: function(p) {
+      var fm = BC_FEATURE_MAP[p.bcRow] || null;
+      if (fm && fm.v === "B") return BC_VILLA_B_FR(p.nom, fm.dfr);
+      return BC_VILLA_A_FR(p.nom);
+    }
+  }
+};
+
 
 var RELANCE = {
   EN: function(n) { return { subj: "Following up \u2014 " + n, body: "Hi,\n\nJust following up on my previous message. Happy to share those content ideas for **" + n + "** whenever the timing works.\n\nWarm regards,\n" + sigEN() }; },
@@ -406,9 +468,11 @@ function loadFromSheets() {
         var p = row[colDate].split("/");
         if (p.length===3) de = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
       }
+      var numCol = (row[0]||"").toString().trim();
+      var bcRow = isBC ? parseInt(numCol) : null;
       return { id:i+1, nom:row[1]||"", cat:row[2]||"", region:region,
                email:row[colEmail]||"", statut:st, dateEnvoi:de, contact:row[colContact]||"", notes:row[colNotes]||"",
-               feature: isBC ? (row[colFeature]||"") : "" };
+               feature: isBC ? (row[colFeature]||"") : "", bcRow: bcRow };
     });
     render(); updateStats(); checkRelances(); checkRecentReplies(); updateResponseRates();
     showToast("✅ "+S.prospects.length+" prospects chargés","success");
@@ -584,7 +648,11 @@ function showPreview(){
   var isBCProspect = p.region === "bc";
   var tmpl;
   if (isBCProspect) {
-    tmpl = (k === "villa") ? BODIES_BC.villa : BODIES_BC.hotel;
+    var bcCat = (k === "villa") ? "villa" : "hotel";
+    tmpl = {
+      EN: function(nom, feat) { return BODIES_BC[bcCat].EN(p); },
+      FR: function(nom, feat) { return BODIES_BC[bcCat].FR(p); }
+    };
   } else {
     tmpl = BODIES[k]||BODIES.hotel;
   }
