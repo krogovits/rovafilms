@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Rovafilms — Outil d'envoi</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#1a1a1a;font-size:14px}
+.header{background:#0d0d0d;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.header h1{color:#c9a84c;font-size:18px;font-weight:600;letter-spacing:.05em}
+.header .sub{color:#666;font-size:12px;margin-top:2px}
+.auth-btn{background:#c9a84c;color:#0d0d0d;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.auth-status{font-size:12px;color:#888;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:#e74c3c}
+.dot.on{background:#27ae60}
+.container{display:grid;grid-template-columns:400px 1fr;height:calc(100vh - 57px)}
+.left{background:#fff;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;overflow:hidden}
+.right{background:#fafafa;overflow-y:auto}
+.filters{padding:14px 16px;border-bottom:1px solid #eee}
+.flabel{font-size:11px;color:#999;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.frow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.pill{font-size:12px;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #ddd;background:#fff;color:#666;transition:all .15s;user-select:none}
+.pill.active{background:#0d0d0d;color:#c9a84c;border-color:#0d0d0d}
+.pill.ractive{background:#e8f4fd;color:#1a6ea8;border-color:#1a6ea8}
+.search{width:100%;padding:7px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;outline:none;margin-top:8px}
+.search:focus{border-color:#c9a84c}
+.phead{padding:8px 16px;background:#f9f9f9;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between}
+.phead span{font-size:12px;color:#666}
+.selall{font-size:12px;color:#c9a84c;cursor:pointer;border:none;background:none;font-weight:500}
+.plist{flex:1;overflow-y:auto}
+.pitem{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer;transition:background .1s}
+.pitem:hover{background:#fafafa}
+.pitem.sel{background:#fffbf0}
+.chk{width:17px;height:17px;border-radius:4px;border:1.5px solid #ccc;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;background:#fff}
+.chk.on{background:#27ae60;border-color:#27ae60;color:#fff}
+.pinfo{flex:1;min-width:0}
+.pname{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.psub{font-size:11px;color:#999;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;flex-shrink:0;white-space:nowrap}
+.th{background:#e8f4fd;color:#1a6ea8}
+.tv{background:#eafde8;color:#1a6e2a}
+.te{background:#fdf5e8;color:#8a5a00}
+.badge{font-size:10px;padding:2px 7px;border-radius:10px;flex-shrink:0;white-space:nowrap}
+.btodo{background:#f0f0f0;color:#888}
+.bsent{background:#e8fde8;color:#1a6e2a}
+.brelance{background:#fdf5e8;color:#8a5a00}
+.bdiscuss{background:#e8f4fd;color:#1a6ea8}
+.toolbar{padding:12px 16px;border-top:1px solid #eee;background:#fff;display:flex;align-items:center;gap:8px}
+.btn-main{background:#0d0d0d;color:#c9a84c;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;flex:1}
+.btn-main:disabled{background:#ccc;color:#999;cursor:not-allowed}
+.selcount{font-size:12px;color:#666;white-space:nowrap}
+.rc{padding:24px}
+.stitle{font-size:11px;color:#999;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:12px}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.scard{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:12px;text-align:center}
+.sn{font-size:22px;font-weight:600;color:#0d0d0d}
+.sl{font-size:11px;color:#999;margin-top:2px}
+.pcard{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:20px;margin-bottom:16px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.fwrap{display:flex;flex-direction:column;gap:3px}
+.flabelb{font-size:11px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.finput{border:1px solid #eee;border-radius:6px;padding:5px 10px;font-size:13px;outline:none;background:#fff;width:100%}
+.finput:focus{border-color:#c9a84c}
+.sep{border:none;border-top:1px dashed #ccc;margin:16px 0}
+.langlabel{font-size:11px;color:#999;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px}
+.pbody{font-size:13px;color:#333;line-height:1.8;white-space:pre-wrap;background:#f9f9f9;border-radius:8px;padding:14px;border:1px solid transparent;outline:none;width:100%}
+.pbody[contenteditable="true"]{border-color:#c9a84c;background:#fff}
+.pactions{display:flex;gap:8px;margin-top:12px}
+.btn-send{background:#27ae60;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-edit{background:transparent;color:#666;border:1px solid #ddd;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer}
+.btn-skip{background:transparent;color:#e74c3c;border:1px solid #fdd;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer}
+.qbar{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.qitem{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
+.qitem:last-child{border-bottom:none}
+.qs{font-size:11px;padding:2px 8px;border-radius:10px;margin-left:auto}
+.qs-pending{background:#f0f0f0;color:#888}
+.qs-sending{background:#e8f4fd;color:#1a6ea8}
+.qs-done{background:#e8fde8;color:#1a6e2a}
+.qs-skip{background:#f5f0e8;color:#8a6a00}
+.rcard{background:#fff;border:1px solid #f5d8a0;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.disccard{background:#fff;border:1px solid #c9e0f5;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.discdot{width:8px;height:8px;border-radius:50%;background:#1a6ea8;flex-shrink:0}
+.rate-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
+.rate-row:last-child{border-bottom:none}
+.rate-label{flex:0 0 90px;font-weight:500;color:#333}
+.rate-track{flex:1;height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden}
+.rate-fill{height:100%;background:#1a6ea8;border-radius:4px}
+.rate-pct{flex:0 0 70px;text-align:right;font-size:12px;color:#888}
+.rdot{width:8px;height:8px;border-radius:50%;background:#e67e22;flex-shrink:0}
+.btn-relance{background:#e67e22;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto;flex-shrink:0}
+.empty{text-align:center;padding:48px 24px;color:#999}
+.empty-icon{font-size:36px;margin-bottom:12px}
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:200;transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#27ae60;color:#fff}
+.toast.error{background:#e74c3c;color:#fff}
+.toast.info{background:#0d0d0d;color:#c9a84c}
+.reload-btn{background:transparent;color:#c9a84c;border:1px solid #c9a84c;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin-left:8px}
+body.dark{background:#0d0d0d;color:#e8e8e8}
+body.dark .header{background:#000}
+body.dark .left{background:#161616;border-color:#2a2a2a}
+body.dark .right{background:#0d0d0d}
+body.dark .filters{border-color:#2a2a2a}
+body.dark .flabel{color:#888}
+body.dark .pill{background:#1f1f1f;border-color:#333;color:#aaa}
+body.dark .pill.active{background:#c9a84c;color:#0d0d0d;border-color:#c9a84c}
+body.dark .pill.ractive{background:#1a4a6e;color:#cde8fb;border-color:#2a6ea8}
+body.dark .search{background:#1f1f1f;border-color:#333;color:#e8e8e8}
+body.dark .phead{background:#161616;border-color:#2a2a2a}
+body.dark .phead span{color:#999}
+body.dark .pitem{border-color:#222}
+body.dark .pitem:hover{background:#1a1a1a}
+body.dark .pitem.sel{background:#1f1b0d}
+body.dark .chk{background:#1f1f1f;border-color:#444}
+body.dark .pname{color:#e8e8e8}
+body.dark .psub{color:#888}
+body.dark .toolbar{background:#161616;border-color:#2a2a2a}
+body.dark .selcount{color:#999}
+body.dark .stitle{color:#888}
+body.dark .scard{background:#161616;border-color:#2a2a2a}
+body.dark .sn{color:#e8e8e8}
+body.dark .sl{color:#888}
+body.dark .pcard{background:#161616;border-color:#2a2a2a}
+body.dark .flabelb{color:#888}
+body.dark .finput{background:#1f1f1f;border-color:#333;color:#e8e8e8}
+body.dark .langlabel{color:#888}
+body.dark .pbody{background:#1a1a1a;color:#ddd}
+body.dark .pbody[contenteditable="true"]{background:#1f1f1f;border-color:#c9a84c}
+body.dark .sep{border-color:#333}
+body.dark .btn-edit{border-color:#444;color:#bbb}
+body.dark .btn-skip{border-color:#5a2a2a;color:#e07a7a}
+body.dark .qbar{background:#161616;border-color:#2a2a2a}
+body.dark .qitem{border-color:#222}
+body.dark .rcard{background:#161616;border-color:#5a4a1a}
+body.dark .disccard{background:#161616;border-color:#1a4a6e}
+body.dark .empty{color:#777}
+body.dark .reload-btn{border-color:#c9a84c;color:#c9a84c}
+body.dark .rate-track{background:#2a2a2a}
+body.dark .rate-label{color:#ccc}
+body.dark .rate-pct{color:#888}
+</style>
+</head>
+<body>
+<div class="header">
+  <div><h1>ROVAFILMS &mdash; Outil d'envoi</h1><div class="sub">hello.rovafilms@gmail.com</div></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="reload-btn" id="darkbtn" onclick="toggleDark()" title="Mode sombre/clair">&#127769;</button>
+    <div class="auth-status"><div class="dot" id="adot"></div><span id="alabel">Non connect&eacute;</span></div>
+    <button class="auth-btn" id="abtn" onclick="connectGmail()">Connecter Gmail</button>
+  </div>
+</div>
+<div class="container">
+  <div class="left">
+    <div class="filters">
+      <div class="flabel">R&eacute;gion</div>
+      <div class="frow" id="rf">
+        <div class="pill ractive" data-v="all" onclick="setF('region',this)">Toutes</div>
+        <div class="pill" data-v="qc" onclick="setF('region',this)">Qu&eacute;bec</div>
+        <div class="pill" data-v="bc" onclick="setF('region',this)">Vancouver BC</div>
+      </div>
+      <div class="flabel" style="margin-top:10px">Cat&eacute;gorie</div>
+      <div class="frow" id="cf">
+        <div class="pill active" data-v="all" onclick="setF('cat',this)">Toutes</div>
+        <div class="pill" data-v="hotel" onclick="setF('cat',this)">H&ocirc;tels</div>
+        <div class="pill" data-v="villa" onclick="setF('cat',this)">Villas</div>
+        <div class="pill" data-v="exp" onclick="setF('cat',this)">Exp&eacute;riences</div>
+      </div>
+      <div class="flabel" style="margin-top:10px">Langue d'envoi</div>
+      <div class="frow" id="lf">
+        <div class="pill active" data-v="ENFR" onclick="setF('lang',this)">EN + FR</div>
+        <div class="pill" data-v="EN" onclick="setF('lang',this)">EN seulement</div>
+        <div class="pill" data-v="FR" onclick="setF('lang',this)">FR seulement</div>
+      </div>
+      <div class="flabel" style="margin-top:10px">Statut</div>
+      <div class="frow" id="sf">
+        <div class="pill active" data-v="all" onclick="setF('statut',this)">Tous</div>
+        <div class="pill" data-v="todo" onclick="setF('statut',this)">&Agrave; envoyer</div>
+        <div class="pill" data-v="relance" onclick="setF('statut',this)">Relances J+5</div>
+      </div>
+      <input class="search" placeholder="Rechercher..." oninput="doSearch(this.value)">
+    </div>
+    <div class="phead">
+      <span id="vcnt">0 prospects</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="reload-btn" onclick="loadFromSheets()" title="Recharger depuis Sheets">&#8635;</button>
+        <button class="selall" onclick="selAll()">Tout cocher</button>
+      </div>
+    </div>
+    <div class="plist" id="plist"></div>
+    <div class="toolbar">
+      <span class="selcount" id="scnt">0 s&eacute;lectionn&eacute;</span>
+      <button class="btn-main" id="pbtn" onclick="startBatch()" disabled>Pr&eacute;visualiser &amp; Envoyer</button>
+    </div>
+  </div>
+  <div class="right">
+    <div class="rc">
+      <div class="stitle">Tableau de bord</div>
+      <div class="sgrid">
+        <div class="scard"><div class="sn" id="s0">0</div><div class="sl">Prospects</div></div>
+        <div class="scard"><div class="sn" id="s1">0</div><div class="sl">Envoy&eacute;s</div></div>
+        <div class="scard"><div class="sn" id="s2">0</div><div class="sl">R&eacute;ponses</div></div>
+        <div class="scard"><div class="sn" id="s3">0</div><div class="sl">Collabs</div></div>
+      </div>
+      <div id="ratesec" style="display:none">
+        <div class="stitle">&#128202; Taux de r&eacute;ponse par cat&eacute;gorie</div>
+        <div class="qbar" id="ratebar"></div>
+      </div>
+      <div id="discsec" style="display:none">
+        <div class="stitle">&#128172; R&eacute;ponses r&eacute;centes</div>
+        <div id="disclist"></div>
+      </div>
+      <div id="rsec" style="display:none">
+        <div class="stitle">&#9200; Relances J+5 en attente</div>
+        <div id="rlist"></div>
+      </div>
+      <div id="bsec" style="display:none">
+        <div class="stitle">File d'envoi</div>
+        <div class="qbar" id="qbar"></div>
+      </div>
+      <div id="psec" style="display:none">
+        <div class="stitle">Aper&ccedil;u &mdash; <span id="pname"></span> <span id="pprog" style="color:#ccc;font-weight:400"></span></div>
+        <div class="pcard">
+          <div class="fgrid">
+            <div class="fwrap"><div class="flabelb">&Agrave; (email destinataire)</div><input type="email" class="finput" id="pto" placeholder="email@exemple.com"></div>
+            <div class="fwrap"><div class="flabelb">Objet</div><input type="text" class="finput" id="psubj" placeholder="Objet du mail"></div>
+          </div>
+          <div id="pbodywrap"></div>
+          <div class="pactions">
+            <button class="btn-send" id="sendbtn" onclick="sendCurrent()">&#9993; Envoyer</button>
+            <button class="btn-edit" id="editbtn" onclick="toggleEdit()">Modifier</button>
+            <button class="btn-skip" onclick="skipCurrent()">Passer</button>
+          </div>
+        </div>
+      </div>
+      <div class="empty" id="emptystate">
+        <div class="empty-icon">&#128203;</div>
+        <p>S&eacute;lectionnez des prospects<br>puis cliquez sur &laquo;&nbsp;Pr&eacute;visualiser &amp; Envoyer&nbsp;&raquo;</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var CLIENT_ID = "18842091843-lte8radv837g95b8c8b5rorg43d8859q.apps.googleusercontent.com";
+var SHEET_ID_QC = "181YVMQ9eYqu0GRXfaOLUv8D3gkdCCt72ttwHYCiqiLA";
+var SHEET_ID_BC = "1j_Vswc3Qwnk6uSXAePV8hHAzIHx4x0ngMtl1zRZEov0";
+var SHEET_ID = SHEET_ID_QC;
+var PORTFOLIO = "rovafilms.com";
+var IG_KEVIN = "https://www.instagram.com/kevinrogovits/";
+var IG_VALERIA = "https://www.instagram.com/valeriaraileanphoto/";
+
+function sigEN() { return "Kevin & Valeria\nRovaFilms | Canada, Europe & Destinations\nKevin \u00b7 Valeria \u00b7 " + PORTFOLIO; }
+function sigFR() { return "Kevin & Valeria\nRovaFilms | Canada, Europe & Destinations\nKevin \u00b7 Valeria \u00b7 " + PORTFOLIO; }
+function sigHTML() {
+  return 'Kevin &amp; Valeria<br>RovaFilms | Canada, Europe &amp; Destinations<br>' +
+    '<a href="' + IG_KEVIN + '" style="color:#c9a84c;text-decoration:none;">Kevin</a> \u00b7 ' +
+    '<a href="' + IG_VALERIA + '" style="color:#c9a84c;text-decoration:none;">Valeria</a> \u00b7 ' +
+    '<a href="https://' + PORTFOLIO + '" style="color:#c9a84c;text-decoration:none;">' + PORTFOLIO + '</a>';
+}
+
+function mkEN(nom, p1, p2, p3, cta) {
+  return "Hi,\n\n" + p1 + "\n\n" + p2 +
+    "\n\n**We're Kevin and Valeria, a duo with a background in major film productions and high-end editorial photography.** We create **cinematic photo and video** " + p3 +
+    "\n\n*" + cta + "* ***Would it make sense to send them over?***" +
+    "\n\nWarm regards,\n" + sigEN() +
+    "\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*";
+}
+function mkFR(nom, p1, p2, p3, cta) {
+  return "Bonjour,\n\n" + p1 + "\n\n" + p2 +
+    "\n\n**Nous sommes Kevin et Valeria, un duo issu des grandes productions cin\u00e9matographiques et de la photographie \u00e9ditoriale haut de gamme.** Nous cr\u00e9ons des **films et photos cin\u00e9matiques** " + p3 +
+    "\n\n*" + cta + "* ***\u00c7a vous int\u00e9resse qu'on vous les envoie\u00a0?***" +
+    "\n\nBien cordialement,\n" + sigFR() +
+    "\n\n*P.S. Si nous n'avons pas contact\u00e9 la bonne personne, une redirection rapide serait tr\u00e8s appr\u00e9ci\u00e9e.*";
+}
+
+var BODIES = {
+  hotel: {
+    EN: function(n) { return mkEN(n, "We\u2019ve been following **" + n + "** for a while, and the direction you\u2019re taking the brand feels genuinely distinctive. That\u2019s not something you see often in this space.", "The brands that dominate luxury travel right now all have one thing in common: content that makes you feel something before you even arrive. That\u2019s exactly the kind of content we build.", "for luxury stays and destination experiences, **built to elevate the brand behind them** and **make them impossible to forget.**", "We have a few specific ideas in mind for " + n + "."); },
+    FR: function(n) { return mkFR(n, "Nous suivons **" + n + "** depuis un moment, et la direction que vous donnez \u00e0 la marque est vraiment distinctive. Ce n\u2019est pas quelque chose qu\u2019on voit souvent dans cet univers.", "Les marques qui dominent le voyage de luxe en ce moment ont toutes un point commun\u00a0: un contenu qui vous fait ressentir quelque chose avant m\u00eame d\u2019arriver. C\u2019est exactement ce que nous cr\u00e9ons.", "pour les s\u00e9jours de luxe et exp\u00e9riences de destination, **con\u00e7us pour \u00e9lever la marque** et **la rendre impossible \u00e0 oublier.**", "Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + "."); }
+  },
+  villa: {
+    EN: function(n) { return mkEN(n, "We came across **" + n + "** recently, and the design and setting caught our attention immediately. It has a character most spend years trying to build.", "The brands that dominate luxury stays right now all have one thing in common: content that makes you feel something before you even arrive. That\u2019s exactly the kind of content we build.", "for luxury stays and destination experiences, **built to make guests feel the experience before they even arrive**, and **elevate the brand behind them.**", "We have a few specific ideas in mind for " + n + "."); },
+    FR: function(n) { return mkFR(n, "Nous sommes tomb\u00e9s sur **" + n + "** r\u00e9cemment, et le design et le cadre ont imm\u00e9diatement retenu notre attention. C\u2019est un caract\u00e8re que la plupart mettent des ann\u00e9es \u00e0 construire.", "Les marques qui dominent les s\u00e9jours de luxe en ce moment ont toutes un point commun\u00a0: un contenu qui vous fait ressentir quelque chose avant m\u00eame d\u2019arriver. C\u2019est exactement ce que nous cr\u00e9ons.", "pour les s\u00e9jours de luxe et exp\u00e9riences de destination, **con\u00e7us pour faire ressentir l\u2019exp\u00e9rience** avant m\u00eame l\u2019arriv\u00e9e, et **\u00e9lever la marque derrière eux.**", "Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + "."); }
+  },
+  "3A": {
+    EN: function(n) { return mkEN(n, "We came across **" + n + "** recently, and there\u2019s a texture and nostalgia to these cars on open roads that\u2019s incredibly cinematic.", "What you\u2019ve built has a story worth telling beyond the drive itself, and that\u2019s exactly what we do.", "for premium experiences, **built to elevate the brand behind them** and **make them impossible to forget.**", "We have a few specific ideas in mind for " + n + "."); },
+    FR: function(n) { return mkFR(n, "Nous sommes tomb\u00e9s sur **" + n + "** r\u00e9cemment, et il y a une texture et une nostalgie dans ces voitures sur route ouverte qui est incroyablement cin\u00e9matique.", "Ce que vous avez construit a une histoire qui m\u00e9rite d\u2019\u00eatre racont\u00e9e bien au-del\u00e0 de la conduite elle-m\u00eame, et c\u2019est exactement ce que nous faisons.", "pour les exp\u00e9riences premium, **con\u00e7us pour \u00e9lever la marque** derri\u00e8re elles et **les rendre impossibles \u00e0 oublier.**", "Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + "."); }
+  },
+  "3B": {
+    EN: function(n) { return mkEN(n, "We came across **" + n + "** recently, and the level of craft behind what you do tells a story that goes far beyond the plate.", "What you\u2019ve built has a story worth telling beyond the meal itself, and that\u2019s exactly what we do.", "for premium experiences, **built to elevate the brand behind them** and **make them impossible to forget.**", "We have a few specific ideas in mind for " + n + "."); },
+    FR: function(n) { return mkFR(n, "Nous sommes tomb\u00e9s sur **" + n + "** r\u00e9cemment, et le niveau de ma\u00eetrise derri\u00e8re ce que vous faites raconte une histoire qui va bien au-del\u00e0 de l\u2019assiette.", "Ce que vous avez construit a une histoire qui m\u00e9rite d\u2019\u00eatre racont\u00e9e bien au-del\u00e0 du repas lui-m\u00eame, et c\u2019est exactement ce que nous faisons.", "pour les exp\u00e9riences premium, **con\u00e7us pour \u00e9lever la marque** derri\u00e8re eux et **les rendre impossibles \u00e0 oublier.**", "Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + "."); }
+  },
+  "3C": {
+    EN: function(n) { return mkEN(n, "We came across **" + n + "** recently, and sailing at that scale has a feeling that\u2019s genuinely cinematic.", "What you\u2019ve built has a story worth telling beyond the water itself, and that\u2019s exactly what we do.", "for premium experiences, **built to elevate the brand behind them** and **make them impossible to forget.**", "We have a few specific ideas in mind for " + n + "."); },
+    FR: function(n) { return mkFR(n, "Nous sommes tomb\u00e9s sur **" + n + "** r\u00e9cemment, et naviguer \u00e0 cette \u00e9chelle a quelque chose de profond\u00e9ment cin\u00e9matique.", "Ce que vous avez construit a une histoire qui m\u00e9rite d\u2019\u00eatre racont\u00e9e bien au-del\u00e0 de l\u2019eau elle-m\u00eame, et c\u2019est exactement ce que nous faisons.", "pour les exp\u00e9riences premium, **con\u00e7us pour \u00e9lever la marque** derri\u00e8re elles et **les rendre impossibles \u00e0 oublier.**", "Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + "."); }
+  },
+  "3D": {
+    EN: function(n) { return mkEN(n, "We came across **" + n + "** recently, and that flight path over the region at golden hour has something genuinely cinematic to it.", "What you\u2019ve built has a story worth telling beyond the flight itself, and that\u2019s exactly what we do.", "for premium experiences, **built to elevate the brand behind them** and **make them impossible to forget.**", "We have a few specific ideas in mind for " + n + "."); },
+    FR: function(n) { return mkFR(n, "Nous sommes tomb\u00e9s sur **" + n + "** r\u00e9cemment, et ce trajet en vol au-dessus de la r\u00e9gion \u00e0 l\u2019heure dor\u00e9e a quelque chose de v\u00e9ritablement cin\u00e9matique.", "Ce que vous avez construit a une histoire qui m\u00e9rite d\u2019\u00eatre racont\u00e9e bien au-del\u00e0 du vol lui-m\u00eame, et c\u2019est exactement ce que nous faisons.", "pour les exp\u00e9riences premium, **con\u00e7us pour \u00e9lever la marque** derri\u00e8re elles et **les rendre impossibles \u00e0 oublier.**", "Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + "."); }
+  },
+  "3E": {
+    EN: function(n) { return mkEN(n, "We came across **" + n + "** recently, and there\u2019s something about private aviation at that level \u2014 the details, the space, the feeling of departure \u2014 that\u2019s deeply cinematic.", "What you\u2019ve built has a story worth telling beyond the journey itself, and that\u2019s exactly what we do.", "for premium experiences, **built to elevate the brand behind them** and **make them impossible to forget.**", "We have a few specific ideas in mind for " + n + "."); },
+    FR: function(n) { return mkFR(n, "Nous sommes tomb\u00e9s sur **" + n + "** r\u00e9cemment, et il y a quelque chose dans l\u2019aviation priv\u00e9e \u00e0 ce niveau \u2014 les d\u00e9tails, l\u2019espace, la sensation du d\u00e9part \u2014 qui est profond\u00e9ment cin\u00e9matique.", "Ce que vous avez construit a une histoire qui m\u00e9rite d\u2019\u00eatre racont\u00e9e bien au-del\u00e0 du voyage lui-m\u00eame, et c\u2019est exactement ce que nous faisons.", "pour les exp\u00e9riences premium, **con\u00e7us pour \u00e9lever la marque** derri\u00e8re elles et **les rendre impossibles \u00e0 oublier.**", "Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + "."); }
+  },
+  "3F": {
+    EN: function(n) { return mkEN(n, "We came across **" + n + "** recently, and that kind of stillness and intentional space is incredibly rare \u2014 and deeply cinematic.", "What you\u2019ve built has a story worth telling beyond the treatment itself, and that\u2019s exactly what we do.", "for premium experiences, **built to elevate the brand behind them** and **make them impossible to forget.**", "We have a few specific ideas in mind for " + n + "."); },
+    FR: function(n) { return mkFR(n, "Nous sommes tomb\u00e9s sur **" + n + "** r\u00e9cemment, et ce type de calme et d\u2019espace intentionnel est incroyablement rare \u2014 et profond\u00e9ment cin\u00e9matique.", "Ce que vous avez construit a une histoire qui m\u00e9rite d\u2019\u00eatre racont\u00e9e bien au-del\u00e0 du soin lui-m\u00eame, et c\u2019est exactement ce que nous faisons.", "pour les exp\u00e9riences premium, **con\u00e7us pour \u00e9lever la marque** derri\u00e8re elles et **les rendre impossibles \u00e0 oublier.**", "Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + "."); }
+  }
+};
+
+
+
+var BC_HOTEL_EN = function(n, feature) {
+  return "Hi,\n\nWe noticed **" + n + "** has a strong visual identity already, the kind of foundation most properties take years to build.\n\nThe brands that dominate the luxury space right now all have one thing in common: content that makes you feel something before you even arrive. That's exactly the kind of content we create.\n\n**We're Kevin and Valeria, a duo with a background in major film productions and high-end editorial photography**, specializing in **cinematic photo, video, and drone content** for hotels and premium stays.\n\nWe'll be in the area between **July 9-18** and would love to set up a collaboration: a stay in exchange for a curated content package, deliverables and usage kept simple and agreed upfront.\n\n*We have a few specific ideas in mind for " + n + ".* ***Would it make sense to send them over?***\n\nWarm regards,\n" + sigEN() + "\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*";
+};
+var BC_VILLA_EN = function(n, feature) {
+  return "Hi,\n\n**" + n + "** caught our eye recently, the design and setting have a character most places spend years trying to build.\n\nThe stays that stand out in this space right now all have one thing in common: content that makes you feel something before you even arrive. That's exactly the kind of content we create.\n\n**We're Kevin and Valeria, a duo with a background in major film productions and high-end editorial photography**, specializing in **cinematic photo, video, and drone content** for chalets, cottages, and private stays.\n\nWe'll be in the area between **July 9-18** and would love to set up a collaboration: a stay in exchange for a curated content package, deliverables and usage kept simple and agreed upfront.\n\n*We have a few specific ideas in mind for " + n + ".* ***Would it make sense to send them over?***\n\nWarm regards,\n" + sigEN() + "\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*";
+};
+var BC_HOTEL_FR = function(n, feature) {
+  return "Bonjour,\n\nNous avons remarqu\u00e9 que **" + n + "** a d\u00e9j\u00e0 une identit\u00e9 visuelle forte, le genre de fondation que la plupart des \u00e9tablissements mettent des ann\u00e9es \u00e0 construire.\n\nLes marques qui dominent l'univers du luxe en ce moment ont toutes un point commun\u00a0: un contenu qui vous fait ressentir quelque chose avant m\u00eame d'arriver. C'est exactement ce que nous cr\u00e9ons.\n\n**Nous sommes Kevin et Valeria, un duo issu des grandes productions cin\u00e9matographiques et de la photographie \u00e9ditoriale haut de gamme**, sp\u00e9cialis\u00e9s en **photo, vid\u00e9o et contenu drone cin\u00e9matique** pour h\u00f4tels et s\u00e9jours premium.\n\nNous serons dans la r\u00e9gion du **9 au 18 juillet** et aimerions organiser une collaboration\u00a0: un s\u00e9jour en \u00e9change d'un ensemble de contenu sur mesure, livrables et droits d'usage gard\u00e9s simples et convenus en amont.\n\n*Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + ".* ***\u00c7a vous int\u00e9resse qu'on vous les envoie\u00a0?***\n\nBien cordialement,\n" + sigFR() + "\n\n*P.S. Si nous n'avons pas contact\u00e9 la bonne personne, une redirection rapide serait tr\u00e8s appr\u00e9ci\u00e9e.*";
+};
+var BC_VILLA_FR = function(n, feature) {
+  return "Bonjour,\n\n**" + n + "** a immediiatement retenu notre attention r\u00e9cemment, le design et le cadre ont un caract\u00e8re que la plupart des endroits mettent des ann\u00e9es \u00e0 construire.\n\nLes s\u00e9jours qui se distinguent dans cet univers ont tous un point commun\u00a0: un contenu qui vous fait ressentir quelque chose avant m\u00eame d'arriver. C'est exactement ce que nous cr\u00e9ons.\n\n**Nous sommes Kevin et Valeria, un duo issu des grandes productions cin\u00e9matographiques et de la photographie \u00e9ditoriale haut de gamme**, sp\u00e9cialis\u00e9s en **photo, vid\u00e9o et contenu drone cin\u00e9matique** pour chalets, cottages et s\u00e9jours priv\u00e9s.\n\nNous serons dans la r\u00e9gion du **9 au 18 juillet** et aimerions organiser une collaboration\u00a0: un s\u00e9jour en \u00e9change d'un ensemble de contenu sur mesure, livrables et droits d'usage gard\u00e9s simples et convenus en amont.\n\n*Nous avons quelques id\u00e9es sp\u00e9cifiques pour " + n + ".* ***\u00c7a vous int\u00e9resse qu'on vous les envoie\u00a0?***\n\nBien cordialement,\n" + sigFR() + "\n\n*P.S. Si nous n'avons pas contact\u00e9 la bonne personne, une redirection rapide serait tr\u00e8s appr\u00e9ci\u00e9e.*";
+};
+
+var BODIES_BC = {
+  hotel: { EN: BC_HOTEL_EN, FR: BC_HOTEL_FR },
+  villa: { EN: BC_VILLA_EN, FR: BC_VILLA_FR },
+  "3A": BODIES.hotel ? {EN: BC_HOTEL_EN, FR: BC_HOTEL_FR} : null
+};
+
+var RELANCE = {
+  EN: function(n) { return { subj: "Following up \u2014 " + n, body: "Hi,\n\nJust following up on my previous message. Happy to share those content ideas for **" + n + "** whenever the timing works.\n\nWarm regards,\n" + sigEN() }; },
+  FR: function(n) { return { subj: "Suite \u00e0 mon message \u2014 " + n, body: "Bonjour,\n\nJe me permets de relancer suite \u00e0 mon message pr\u00e9c\u00e9dent. Je serais ravi de vous partager ces id\u00e9es de contenu pour **" + n + "** d\u00e8s que le moment est opportun.\n\nBien cordialement,\n" + sigFR() }; }
+};
+
+function getCatKey(cat) {
+  var c = (cat || "").toLowerCase();
+  if (c.includes("voiture") || c.includes("exotic") || c.includes("supercar")) return "3A";
+  if (c.includes("gastronom") || c.includes("restaurant")) return "3B";
+  if (c.includes("yacht") || c.includes("bateau") || c.includes("crois") || c.includes("boat") || c.includes("ulm")) return "3C";
+  if (c.includes("h\u00e9lic") || c.includes("helic")) return "3D";
+  if (c.includes("aviation")) return "3E";
+  if (c.includes("spa") || c.includes("wellness") || c.includes("nordik") || c.includes("balnea") || c.includes("eastman")) return "3F";
+  if (c.includes("villa") || c.includes("chalet") || c.includes("glamping") || c.includes("pourvoirie") || c.includes("seigneurie") || c.includes("auberge") || c.includes("baluchon") || c.includes("triton")) return "villa";
+  return "hotel";
+}
+function getTagClass(k) { return k==="hotel"?"th":k==="villa"?"tv":"te"; }
+function getTagLabel(k) { var m={hotel:"H\u00f4tel",villa:"Villa","3A":"Voitures","3B":"Gastro","3C":"Yacht","3D":"H\u00e9lico","3E":"Aviation","3F":"Spa"}; return m[k]||"Exp\u00e9rience"; }
+
+function b2h(text) {
+  return text
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/\*\*\*([^*]+)\*\*\*/g,"<strong><em>$1</em></strong>")
+    .replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g,"<em>$1</em>")
+    .replace(/\n/g,"<br>")
+    .replace(/Kevin &amp; Valeria<br>RovaFilms \| Canada, Europe &amp; Destinations<br>Kevin · Valeria · rovafilms\.com/g, sigHTML());
+}
+
+var S = {
+  prospects:[], filters:{region:"all",cat:"all",lang:"ENFR",statut:"all",search:""},
+  selected:new Set(), queue:[], qIdx:0,
+  gmailToken:null, connected:false, isRelance:false, relanceId:null
+};
+
+function getActiveSheetName() {
+  return SHEET_ID === SHEET_ID_BC ? "🏔️ Vancouver BC" : "🍁 Québec";
+}
+function getActiveRegion() {
+  return SHEET_ID === SHEET_ID_BC ? "bc" : "qc";
+}
+
+function loadFromSheets() {
+  if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
+  showToast("Chargement des prospects...","info");
+  var sn = getActiveSheetName();
+  var region = getActiveRegion();
+  var isBC = region === "bc";
+  var sheetRange = encodeURIComponent(sn + "!A3:V200");
+  var url = "https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values/" + sheetRange;
+  fetch(url, { headers:{"Authorization":"Bearer "+S.gmailToken} })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    console.log("Sheets:", JSON.stringify(data).substring(0,300));
+    if (data.error) { showToast("Erreur: "+data.error.message,"error"); return; }
+    if (!data.values || !data.values.length) { showToast("Aucune donnée trouvée","error"); return; }
+
+    var colEmail = isBC ? 8 : 6;
+    var colStatut = isBC ? 9 : 7;
+    var colDate = isBC ? 10 : 8;
+    var colContact = isBC ? 13 : 11;
+    var colNotes = isBC ? 20 : 13;
+    var colFeature = 18; // DISTINCTIVE FEATURE column (BC only)
+
+    var rows = data.values.filter(function(r){ return r[1] && r[1].trim() && !isNaN((r[0]||"").toString().trim()) && (r[0]||"").toString().trim() !== ""; });
+    S.prospects = rows.map(function(row, i){
+      var st = "todo";
+      var sr = (row[colStatut]||"").toLowerCase().trim();
+      if (sr === "envoyé" || sr === "envoye" || sr === "relance j+5" || sr === "relance") st="sent";
+      else if (sr === "en discussion") st="discuss";
+      else if (sr.includes("confirm")) st="confirmed";
+      else if (sr === "à envoyer" || sr === "a envoyer" || sr === "") st="todo";
+      var de = null;
+      if (row[colDate] && row[colDate].trim()) {
+        var p = row[colDate].split("/");
+        if (p.length===3) de = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+      }
+      return { id:i+1, nom:row[1]||"", cat:row[2]||"", region:region,
+               email:row[colEmail]||"", statut:st, dateEnvoi:de, contact:row[colContact]||"", notes:row[colNotes]||"",
+               feature: isBC ? (row[colFeature]||"") : "" };
+    });
+    render(); updateStats(); checkRelances(); checkRecentReplies(); updateResponseRates();
+    showToast("✅ "+S.prospects.length+" prospects chargés","success");
+  })
+  .catch(function(e){ showToast("Erreur réseau: "+e.message,"error"); console.error(e); });
+}
+
+
+function setF(type, el) {
+  var g={region:"rf",cat:"cf",lang:"lf",statut:"sf"}[type];
+  document.getElementById(g).querySelectorAll(".pill").forEach(function(p){p.className="pill";});
+  el.className = type==="region"?"pill ractive":"pill active";
+  S.filters[type] = el.dataset.v;
+  if (type === "region" && el.dataset.v !== "all") {
+    var newSheet = el.dataset.v === "bc" ? SHEET_ID_BC : SHEET_ID_QC;
+    if (SHEET_ID !== newSheet) {
+      SHEET_ID = newSheet;
+      if (S.connected) loadFromSheets();
+    }
+  }
+  render();
+}
+function doSearch(v){ S.filters.search=v.toLowerCase(); render(); }
+
+function getVisible() {
+  return S.prospects.filter(function(p){
+    var k=getCatKey(p.cat);
+    var catOk = S.filters.cat==="all" ||
+      (S.filters.cat==="hotel"&&k==="hotel") ||
+      (S.filters.cat==="villa"&&k==="villa") ||
+      (S.filters.cat==="exp"&&k!=="hotel"&&k!=="villa");
+    var stOk = true;
+    if (S.filters.statut==="todo") stOk=p.statut==="todo";
+    else if (S.filters.statut==="relance") stOk=needsRelance(p);
+    return (S.filters.region==="all"||p.region===S.filters.region) &&
+           catOk && stOk &&
+           (!S.filters.search||p.nom.toLowerCase().includes(S.filters.search));
+  });
+}
+function needsRelance(p){ return p.statut==="sent"&&p.dateEnvoi&&(Date.now()-new Date(p.dateEnvoi))/864e5>=5; }
+
+function render(){
+  var vis=getVisible();
+  document.getElementById("vcnt").textContent=vis.length+" prospect"+(vis.length>1?"s":"");
+  var html=vis.map(function(p){
+    var k=getCatKey(p.cat), sel=S.selected.has(p.id), rel=needsRelance(p);
+    var bc=rel?"badge brelance":p.statut==="sent"?"badge bsent":p.statut==="discuss"?"badge bdiscuss":"badge btodo";
+    var bl=rel?"Relance J+5":p.statut==="sent"?"Envoy\u00e9":p.statut==="discuss"?"En discussion":"\u00c0 envoyer";
+    return '<div class="pitem'+(sel?" sel":"")+'" onclick="toggleSel('+p.id+')">' +
+      '<div class="chk'+(sel?" on":"")+'">'+(sel?"\u2713":"")+'</div>' +
+      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+'</div></div>' +
+      '<div class="tag '+getTagClass(k)+'">'+getTagLabel(k)+'</div>' +
+      '<div class="'+bc+'">'+bl+'</div></div>';
+  }).join("")||'<div class="empty"><div class="empty-icon">\ud83d\udd0d</div><p>Aucun prospect</p></div>';
+  document.getElementById("plist").innerHTML=html;
+  updateSelCount();
+}
+function toggleSel(id){ if(S.selected.has(id))S.selected.delete(id);else S.selected.add(id); render(); }
+function selAll(){
+  var vis=getVisible(), all=vis.every(function(p){return S.selected.has(p.id);});
+  vis.forEach(function(p){all?S.selected.delete(p.id):S.selected.add(p.id);});
+  render();
+}
+function updateSelCount(){
+  var n=S.selected.size;
+  document.getElementById("scnt").textContent=n+" s\u00e9lectionn\u00e9"+(n>1?"s":"");
+  document.getElementById("pbtn").disabled=n===0;
+}
+function updateStats(){
+  document.getElementById("s0").textContent=S.prospects.length;
+  document.getElementById("s1").textContent=S.prospects.filter(function(p){return["sent","discuss","confirmed"].includes(p.statut);}).length;
+  document.getElementById("s2").textContent=S.prospects.filter(function(p){return p.statut==="discuss";}).length;
+  document.getElementById("s3").textContent=S.prospects.filter(function(p){return p.statut==="confirmed";}).length;
+}
+
+function checkRelances(){
+  var list=S.prospects.filter(needsRelance);
+  var sec=document.getElementById("rsec");
+  if(!list.length){sec.style.display="none";return;}
+  sec.style.display="block";
+  document.getElementById("rlist").innerHTML=list.map(function(p){
+    var days=Math.round((Date.now()-new Date(p.dateEnvoi))/864e5);
+    return '<div class="rcard"><div class="rdot"></div><div><div style="font-size:13px;font-weight:600">'+p.nom+'</div><div style="font-size:11px;color:#999">Envoy\u00e9 il y a '+days+' jour'+(days>1?"s":"")+'</div></div><button class="btn-relance" onclick="openRelance('+p.id+')">Envoyer relance</button></div>';
+  }).join("");
+}
+
+function checkRecentReplies(){
+  var list=S.prospects.filter(function(p){return p.statut==="discuss";});
+  var sec=document.getElementById("discsec");
+  if(!list.length){sec.style.display="none";return;}
+  sec.style.display="block";
+  document.getElementById("disclist").innerHTML=list.map(function(p){
+    var k=getCatKey(p.cat);
+    return '<div class="disccard"><div class="discdot"></div><div><div style="font-size:13px;font-weight:600">'+p.nom+'</div><div style="font-size:11px;color:#999">'+getTagLabel(k)+' \u2014 en discussion</div></div></div>';
+  }).join("");
+}
+
+function updateResponseRates(){
+  var sec=document.getElementById("ratesec");
+  var cats={};
+  S.prospects.forEach(function(p){
+    var k=getCatKey(p.cat);
+    var label=getTagLabel(k);
+    if(!cats[label]) cats[label]={sent:0,replied:0};
+    var wasSent = ["sent","discuss","confirmed"].includes(p.statut);
+    var replied = ["discuss","confirmed"].includes(p.statut);
+    if(wasSent) cats[label].sent++;
+    if(replied) cats[label].replied++;
+  });
+  var labels=Object.keys(cats).filter(function(l){return cats[l].sent>0;});
+  if(!labels.length){sec.style.display="none";return;}
+  sec.style.display="block";
+  document.getElementById("ratebar").innerHTML=labels.map(function(l){
+    var c=cats[l];
+    var pct=c.sent>0?Math.round((c.replied/c.sent)*100):0;
+    return '<div class="rate-row"><div class="rate-label">'+l+'</div><div class="rate-track"><div class="rate-fill" style="width:'+pct+'%"></div></div><div class="rate-pct">'+c.replied+'/'+c.sent+' ('+pct+'%)</div></div>';
+  }).join("");
+}
+
+function openRelance(id){
+  var p=S.prospects.find(function(x){return x.id===id;});
+  if(!p)return;
+  S.isRelance=true; S.relanceId=id;
+  var lang=S.filters.lang;
+  var rEN=RELANCE.EN(p.nom), rFR=RELANCE.FR(p.nom);
+  document.getElementById("emptystate").style.display="none";
+  document.getElementById("bsec").style.display="none";
+  document.getElementById("psec").style.display="block";
+  document.getElementById("pname").textContent=p.nom+" \u2014 Relance J+5";
+  document.getElementById("pprog").textContent="";
+  document.getElementById("pto").value=p.email;
+  var wrap=document.getElementById("pbodywrap");
+  if(lang==="ENFR"){
+    document.getElementById("psubj").value=rEN.subj;
+    wrap.innerHTML='<div class="langlabel">English</div><div class="pbody" id="ben" contenteditable="false">'+rEN.body+'</div><hr class="sep"><div class="langlabel">Fran\u00e7ais</div><div class="pbody" id="bfr" contenteditable="false">'+rFR.body+'</div>';
+  } else if(lang==="EN"){
+    document.getElementById("psubj").value=rEN.subj;
+    wrap.innerHTML='<div class="pbody" id="ben" contenteditable="false">'+rEN.body+'</div>';
+  } else {
+    document.getElementById("psubj").value=rFR.subj;
+    wrap.innerHTML='<div class="pbody" id="bfr" contenteditable="false">'+rFR.body+'</div>';
+  }
+}
+
+function startBatch(){
+  S.isRelance=false;
+  var sel=S.prospects.filter(function(p){return S.selected.has(p.id);});
+  if(!sel.length)return;
+  if(sel.length>=8){
+    var ok=confirm("Tu es sur le point d'envoyer "+sel.length+" emails. Confirmer l'envoi ?");
+    if(!ok) return;
+  }
+  S.queue=sel.map(function(p){return{prospect:p,status:"pending"};});
+  S.qIdx=0;
+  document.getElementById("emptystate").style.display="none";
+  document.getElementById("bsec").style.display="block";
+  renderQueue(); showPreview();
+}
+function renderQueue(){
+  var labels={pending:"En attente",sending:"En cours...",done:"Envoy\u00e9 \u2713",skip:"Pass\u00e9"};
+  document.getElementById("qbar").innerHTML=S.queue.map(function(item,i){
+    return '<div class="qitem" id="qi'+i+'"><span>'+item.prospect.nom+'</span><span class="qs qs-'+item.status+'">'+labels[item.status]+'</span></div>';
+  }).join("");
+}
+function showPreview(){
+  if(S.qIdx>=S.queue.length){
+    document.getElementById("psec").style.display="none";
+    document.getElementById("emptystate").style.display="block";
+    showToast("Tous les emails ont \u00e9t\u00e9 trait\u00e9s.","success");
+    S.selected.clear(); render(); updateStats(); return;
+  }
+  var item=S.queue[S.qIdx], p=item.prospect, k=getCatKey(p.cat), lang=S.filters.lang;
+  var isBCProspect = p.region === "bc";
+  var tmpl;
+  if (isBCProspect) {
+    tmpl = (k === "villa") ? BODIES_BC.villa : BODIES_BC.hotel;
+  } else {
+    tmpl = BODIES[k]||BODIES.hotel;
+  }
+  item.status="sending"; renderQueue();
+  document.getElementById("psec").style.display="block";
+  document.getElementById("pname").textContent=p.nom;
+  document.getElementById("pprog").textContent="("+(S.qIdx+1)+"/"+S.queue.length+")";
+  document.getElementById("pto").value=p.email;
+  var wrap=document.getElementById("pbodywrap");
+  if(lang==="ENFR"){
+    document.getElementById("psubj").value="A content idea for "+p.nom;
+    wrap.innerHTML='<div class="langlabel">English</div><div class="pbody" id="ben" contenteditable="false">'+tmpl.EN(p.nom,p.feature)+'</div><hr class="sep"><div class="langlabel">Fran\u00e7ais</div><div class="pbody" id="bfr" contenteditable="false">'+tmpl.FR(p.nom,p.feature)+'</div>';
+  } else if(lang==="EN"){
+    document.getElementById("psubj").value="A content idea for "+p.nom;
+    wrap.innerHTML='<div class="pbody" id="ben" contenteditable="false">'+tmpl.EN(p.nom,p.feature)+'</div>';
+  } else {
+    document.getElementById("psubj").value="Une id\u00e9e de contenu pour "+p.nom;
+    wrap.innerHTML='<div class="pbody" id="bfr" contenteditable="false">'+tmpl.FR(p.nom,p.feature)+'</div>';
+  }
+}
+
+function sendCurrent(){
+  var to=document.getElementById("pto").value;
+  var subj=document.getElementById("psubj").value;
+  var lang=S.filters.lang, body;
+  if(lang==="ENFR"){
+    var en=document.getElementById("ben")?document.getElementById("ben").innerText:"";
+    var fr=document.getElementById("bfr")?document.getElementById("bfr").innerText:"";
+    body=en+"\n\n---\n\n"+fr;
+  } else {
+    var el=document.getElementById("ben")||document.getElementById("bfr");
+    body=el?el.innerText:"";
+  }
+
+  var sendBtn=document.getElementById("sendbtn");
+  if(sendBtn){sendBtn.disabled=true;sendBtn.textContent="Envoi en cours...";}
+
+  doSend(to,subj,body).then(function(success){
+    if(sendBtn){sendBtn.disabled=false;sendBtn.textContent="\u2709\ufe0f Envoyer";}
+    if(!success){
+      showToast("Envoi \u00e9chou\u00e9 \u2014 statut NON mis \u00e0 jour, r\u00e9essaie","error");
+      return; // Ne touche ni au statut Sheets ni \u00e0 la file
+    }
+    if(S.isRelance){
+      var p=S.prospects.find(function(x){return x.id===S.relanceId;});
+      if(p){p.statut="sent";p.dateEnvoi=new Date();updateSheets(p,"Relance J+5");}
+      render();checkRelances();checkRecentReplies();updateResponseRates();updateStats();
+      showToast("Relance envoy\u00e9e","success");
+      document.getElementById("psec").style.display="none";
+      document.getElementById("emptystate").style.display="block";
+      S.isRelance=false;
+    } else {
+      var item=S.queue[S.qIdx];
+      item.prospect.statut="sent";item.prospect.dateEnvoi=new Date();
+      updateSheets(item.prospect, getActiveRegion()==="bc" ? "Envoye" : "Envoyé");
+      item.status="done";renderQueue();
+      showToast("Email envoy\u00e9 \u00e0 "+item.prospect.nom,"success");
+      S.qIdx++;setTimeout(showPreview,500);updateStats();updateResponseRates();
+    }
+  });
+}
+function skipCurrent(){
+  if(!S.isRelance){S.queue[S.qIdx].status="skip";renderQueue();S.qIdx++;showPreview();}
+}
+function toggleEdit(){
+  var editing=document.getElementById("ben")&&document.getElementById("ben").contentEditable==="true";
+  ["ben","bfr"].forEach(function(id){var el=document.getElementById(id);if(el)el.contentEditable=editing?"false":"true";});
+  document.getElementById("editbtn").textContent=editing?"Modifier":"Verrouiller";
+}
+
+function connectGmail(){
+  var scope=encodeURIComponent("https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/spreadsheets");
+  var callbackUrl = location.href.replace('rovafilms_email_tool.html','oauth_callback.html').split('?')[0].split('#')[0];
+  var url="https://accounts.google.com/o/oauth2/v2/auth?client_id="+CLIENT_ID+"&redirect_uri="+encodeURIComponent(callbackUrl)+"&response_type=token&scope="+scope+"&prompt=consent";
+  window.open(url,"_blank","width=500,height=600");
+}
+function checkAuth(){
+  // Ecoute le token envoyé par la page oauth_callback.html
+  window.addEventListener('message', function(e){
+    if (!e.data || !e.data.startsWith('oauth:')) return;
+    var hash = e.data.replace('oauth:','');
+    var params = new URLSearchParams(hash);
+    S.gmailToken = params.get('access_token');
+    if (!S.gmailToken) return;
+    S.connected=true;
+    document.getElementById("adot").className="dot on";
+    document.getElementById("alabel").textContent="hello.rovafilms@gmail.com";
+    document.getElementById("abtn").textContent="\u2713 Connect\u00e9";
+    document.getElementById("abtn").style.background="#27ae60";
+    showToast("Gmail connect\u00e9 !","success");
+    setTimeout(loadFromSheets,800);
+  });
+  // Fallback: si le token est dans le hash de la page courante
+  var hash=window.location.hash;
+  if(!hash.includes("access_token"))return;
+  var params=new URLSearchParams(hash.substring(1));
+  S.gmailToken=params.get("access_token");
+  S.connected=true;
+  document.getElementById("adot").className="dot on";
+  document.getElementById("alabel").textContent="hello.rovafilms@gmail.com";
+  document.getElementById("abtn").textContent="\u2713 Connect\u00e9";
+  document.getElementById("abtn").style.background="#27ae60";
+  window.location.hash="";
+  showToast("Gmail connect\u00e9 !","success");
+  setTimeout(loadFromSheets,800);
+}
+
+function doSend(to,subject,body){
+  if(!S.connected||!S.gmailToken){console.log("[D\u00c9MO] \u00c0:"+to+"\nObjet:"+subject+"\n\n"+body);return Promise.resolve(true);}
+  var htmlBody="<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;font-size:14px;line-height:1.8;color:#1a1a1a;\">"+b2h(body)+"</body></html>";
+  var bnd="bnd_rova_"+Date.now();
+  var raw=["From: RovaFilms <hello.rovafilms@gmail.com>","To: "+to,
+    "Subject: =?UTF-8?B?"+btoa(unescape(encodeURIComponent(subject)))+"?=",
+    "MIME-Version: 1.0","Content-Type: multipart/alternative; boundary=\""+bnd+"\"","",
+    "--"+bnd,"Content-Type: text/plain; charset=UTF-8","Content-Transfer-Encoding: base64","",
+    btoa(unescape(encodeURIComponent(body))),"",
+    "--"+bnd,"Content-Type: text/html; charset=UTF-8","Content-Transfer-Encoding: base64","",
+    btoa(unescape(encodeURIComponent(htmlBody))),"","--"+bnd+"--"].join("\n");
+  var encoded=btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  return fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{
+    method:"POST",
+    headers:{"Authorization":"Bearer "+S.gmailToken,"Content-Type":"application/json"},
+    body:JSON.stringify({raw:encoded})
+  }).then(function(r){
+    if(!r.ok){showToast("Erreur Gmail \u2014 email NON envoy\u00e9","error");return false;}
+    return true;
+  }).catch(function(){showToast("Erreur r\u00e9seau \u2014 email NON envoy\u00e9","error");return false;});
+}
+
+function updateSheets(prospect, statut) {
+  if (!S.connected || !S.gmailToken) return;
+  var today = new Date();
+  var dd = String(today.getDate()).padStart(2,"0");
+  var mm = String(today.getMonth()+1).padStart(2,"0");
+  var yyyy = today.getFullYear();
+  var dateStr = dd+"/"+mm+"/"+yyyy;
+  var sn = getActiveSheetName();
+  var isBC = getActiveRegion() === "bc";
+  var colStatutLetter = isBC ? "J" : "H";
+  var colDateLetter = isBC ? "K" : "I";
+
+  fetch("https://sheets.googleapis.com/v4/spreadsheets/"+SHEET_ID+"/values/"+encodeURIComponent(sn+"!A1:B200"),{
+    headers:{"Authorization":"Bearer "+S.gmailToken}
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    if(!data.values) return;
+    var rowIndex = -1;
+    for(var i=0;i<data.values.length;i++){
+      var row = data.values[i];
+      var colA = (row[0]||"").toString().trim();
+      var colB = (row[1]||"").toString().trim();
+      if(!isNaN(colA) && colA !== "" && colB === prospect.nom) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+    if(rowIndex === -1){ console.log("Prospect non trouvé dans Sheets: "+prospect.nom); return; }
+    var reqs = [
+      {range: sn+"!"+colStatutLetter+rowIndex, values: [[statut]]},
+      {range: sn+"!"+colDateLetter+rowIndex, values: [[dateStr]]}
+    ];
+    fetch("https://sheets.googleapis.com/v4/spreadsheets/"+SHEET_ID+"/values:batchUpdate",{
+      method:"POST",
+      headers:{"Authorization":"Bearer "+S.gmailToken,"Content-Type":"application/json"},
+      body:JSON.stringify({data:reqs,valueInputOption:"RAW"})
+    }).then(function(r){
+      if(r.ok) console.log("Sheets OK ligne "+rowIndex+": "+prospect.nom+" -> "+statut);
+      else r.json().then(function(e){console.error("Sheets err:",e);});
+    }).catch(function(e){console.error("Sheets fail:",e);});
+  }).catch(function(e){console.error("Sheets find fail:",e);});
+}
+
+
+function showToast(msg,type){
+  var t=document.getElementById("toast");
+  t.textContent=msg;t.className="toast "+(type||"info")+" show";
+  setTimeout(function(){t.classList.remove("show");},3000);
+}
+
+function toggleDark(){
+  document.body.classList.toggle("dark");
+  var isDark = document.body.classList.contains("dark");
+  try{ localStorage.setItem("rovafilms_dark", isDark ? "1" : "0"); }catch(e){}
+}
+function initDark(){
+  try{
+    if(localStorage.getItem("rovafilms_dark")==="1"){ document.body.classList.add("dark"); }
+  }catch(e){}
+}
+
+window.onload=function(){initDark();checkAuth();render();
+  // Plein écran automatique
+  try { window.moveTo(0,0); window.resizeTo(screen.availWidth, screen.availHeight); } catch(e){}
+};
+</script>
+</body>
+</html>

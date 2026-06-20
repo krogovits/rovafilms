@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Connexion...</title>
+<style>body{background:#0d0d0d;color:#c9a84c;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:16px;}</style>
+</head>
+<body>
+<div>Connexion Gmail en cours...</div>
+<script>
+var hash = window.location.hash.substring(1);
+if (hash.includes('access_token')) {
+  if (window.opener && !window.opener.closed) {
+    window.opener.postMessage('oauth:' + hash, '*');
+  }
+  setTimeout(function(){ window.close(); }, 500);
+} else {
+  document.querySelector('div').textContent = 'Erreur de connexion. Fermez cette fenetre.';
+}
+</script>
+</body>
+</html>
