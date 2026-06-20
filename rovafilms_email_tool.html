@@ -142,7 +142,7 @@ body.dark .rate-pct{color:#888}
 </head>
 <body>
 <div class="header">
-  <div><h1>ROVAFILMS &mdash; Outil d'envoi</h1><div class="sub">hello.rovafilms@gmail.com</div></div>
+  <div><h1>ROVAFILMS &mdash; Outil d'envoi</h1><div class="sub">hello.rovafilms@gmail.com &nbsp;|&nbsp; <a href="https://krogovits.github.io/rovafilms/rovafilms_email_tool.html" style="color:#c9a84c;text-decoration:none;" target="_blank">krogovits.github.io/rovafilms</a></div></div>
   <div style="display:flex;align-items:center;gap:12px">
     <button class="reload-btn" id="darkbtn" onclick="toggleDark()" title="Mode sombre/clair">&#127769;</button>
     <div class="auth-status"><div class="dot" id="adot"></div><span id="alabel">Non connect&eacute;</span></div>
@@ -776,7 +776,6 @@ function initDark(){
 }
 
 window.onload=function(){initDark();checkAuth();render();
-  // Plein écran automatique
   try { window.moveTo(0,0); window.resizeTo(screen.availWidth, screen.availHeight); } catch(e){}
 };
 </script>
