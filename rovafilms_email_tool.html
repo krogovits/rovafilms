@@ -243,8 +243,11 @@ body.dark .rate-pct{color:#888}
 <script>
 var CLIENT_ID = "18842091843-lte8radv837g95b8c8b5rorg43d8859q.apps.googleusercontent.com";
 var SHEET_ID_QC = "181YVMQ9eYqu0GRXfaOLUv8D3gkdCCt72ttwHYCiqiLA";
-var SHEET_ID_BC = "1pDlT8T0nQwn7EvSTWhJQ1HSNDAHGxv7iMOdgpoyEKGQ";
+var SHEET_ID_BC = "1uTSS3jzh2sIReKVbILi_LQG2DHVUS_qs-cRUKCXnYQU";
 var SHEET_ID = SHEET_ID_QC;
+// Drive folder IDs — fixes, ne changent jamais
+var FOLDER_ID_QC = "1hyQUuHSeGblSlrM6OGdQHWtooUUI_J2j";
+var FOLDER_ID_BC = "1rYurGwu2nYmpTfrKCKEGSrDJo0fQEzi3";
 var PORTFOLIO = "rovafilms.com";
 var IG_KEVIN = "https://www.instagram.com/kevinrogovits/";
 var IG_VALERIA = "https://www.instagram.com/valeriaraileanphoto/";
@@ -427,6 +430,27 @@ var S = {
   gmailToken:null, connected:false, isRelance:false, relanceId:null
 };
 
+
+function discoverSheetId(folderId, callback) {
+  // Find the most recent Google Sheets file in the given Drive folder
+  var url = "https://www.googleapis.com/drive/v3/files?q=" +
+    encodeURIComponent("'" + folderId + "' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false") +
+    "&orderBy=modifiedTime desc&pageSize=1&fields=files(id,name)";
+  fetch(url, { headers: {"Authorization": "Bearer " + S.gmailToken} })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if (data.files && data.files.length > 0) {
+      var file = data.files[0];
+      console.log("Sheet trouv\u00e9: " + file.name + " (" + file.id + ")");
+      callback(file.id);
+    } else {
+      console.error("Aucun Google Sheets trouv\u00e9 dans le dossier");
+      callback(null);
+    }
+  })
+  .catch(function(e){ console.error("Erreur Drive:", e); callback(null); });
+}
+
 function getActiveSheetName() {
   return SHEET_ID === SHEET_ID_BC ? "🏔️ Vancouver BC" : "🍁 Québec";
 }
@@ -437,6 +461,25 @@ function getActiveRegion() {
 function loadFromSheets() {
   if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
   showToast("Chargement des prospects...","info");
+  var isBC = getActiveRegion() === "bc";
+  if (isBC) {
+    // Auto-discover le bon fichier Sheets dans le dossier Drive BC
+    discoverSheetId(FOLDER_ID_BC, function(newId) {
+      if (newId && newId !== SHEET_ID_BC) {
+        SHEET_ID_BC = newId;
+        SHEET_ID = newId;
+        console.log("Nouvel ID BC d\u00e9tect\u00e9: " + newId);
+      } else if (newId) {
+        SHEET_ID = newId;
+      }
+      doLoadFromSheets();
+    });
+    return;
+  }
+  doLoadFromSheets();
+}
+
+function doLoadFromSheets() {
   var sn = getActiveSheetName();
   var region = getActiveRegion();
   var isBC = region === "bc";
@@ -725,7 +768,7 @@ function toggleEdit(){
 }
 
 function connectGmail(){
-  var scope=encodeURIComponent("https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/spreadsheets");
+  var scope=encodeURIComponent("https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly");
   var callbackUrl = location.href.replace('rovafilms_email_tool.html','oauth_callback.html').split('?')[0].split('#')[0];
   var url="https://accounts.google.com/o/oauth2/v2/auth?client_id="+CLIENT_ID+"&redirect_uri="+encodeURIComponent(callbackUrl)+"&response_type=token&scope="+scope+"&prompt=consent";
   window.open(url,"_blank","width=500,height=600");
