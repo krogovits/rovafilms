@@ -421,7 +421,7 @@ function b2h(text) {
     .replace(/\*([^*]+)\*/g,"<em>$1</em>")
     .replace(/\n/g,"<br>")
     .replace(/Kevin &amp; Valeria<br>RovaFilms \| Canada, Europe &amp; Destinations<br>Kevin · Valeria · rovafilms\.com/g, sigHTML())
-    .replace(/rovafilms\.com/g,'<a href="https://rovafilms.com" style="color:#c9a84c;text-decoration:none;">rovafilms.com</a>');
+    .replace(/rovafilms\.com(?![^<]*>)/g,'<a href="https://rovafilms.com" style="color:#c9a84c;text-decoration:none;">rovafilms.com</a>');
 }
 
 var S = {
