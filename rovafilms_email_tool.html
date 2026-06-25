@@ -419,9 +419,9 @@ function b2h(text) {
     .replace(/\*\*\*([^*]+)\*\*\*/g,"<strong><em>$1</em></strong>")
     .replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g,"<em>$1</em>")
-    .replace(/rovafilms\.com/g,'<a href="https://rovafilms.com" style="color:#c9a84c;text-decoration:none;">rovafilms.com</a>')
     .replace(/\n/g,"<br>")
-    .replace(/Kevin &amp; Valeria<br>RovaFilms \| Canada, Europe &amp; Destinations<br>Kevin · Valeria · rovafilms\.com/g, sigHTML());
+    .replace(/Kevin &amp; Valeria<br>RovaFilms \| Canada, Europe &amp; Destinations<br>Kevin · Valeria · rovafilms\.com/g, sigHTML())
+    .replace(/rovafilms\.com/g,'<a href="https://rovafilms.com" style="color:#c9a84c;text-decoration:none;">rovafilms.com</a>');
 }
 
 var S = {
