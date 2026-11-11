@@ -157,6 +157,7 @@ body.dark .rate-pct{color:#888}
         <div class="pill ractive" data-v="all" onclick="setF('region',this)">Toutes</div>
         <div class="pill" data-v="qc" onclick="setF('region',this)">Qu&eacute;bec</div>
         <div class="pill" data-v="bc" onclick="setF('region',this)">Vancouver BC</div>
+        <div class="pill" data-v="paris" onclick="setF('region',this)">Paris</div>
       </div>
       <div class="flabel" style="margin-top:10px">Cat&eacute;gorie</div>
       <div class="frow" id="cf">
@@ -245,10 +246,12 @@ body.dark .rate-pct{color:#888}
 var CLIENT_ID = "18842091843-lte8radv837g95b8c8b5rorg43d8859q.apps.googleusercontent.com";
 var SHEET_ID_QC = "181YVMQ9eYqu0GRXfaOLUv8D3gkdCCt72ttwHYCiqiLA";
 var SHEET_ID_BC = "1uTSS3jzh2sIReKVbILi_LQG2DHVUS_qs-cRUKCXnYQU";
+var SHEET_ID_PARIS = "1jdT0u7-dnewUMmMRnM9Bi8GQtfbb38zZNvHJpGxGRs0";
 var SHEET_ID = SHEET_ID_QC;
 // Drive folder IDs — fixes, ne changent jamais
 var FOLDER_ID_QC = "1hyQUuHSeGblSlrM6OGdQHWtooUUI_J2j";
 var FOLDER_ID_BC = "1rYurGwu2nYmpTfrKCKEGSrDJo0fQEzi3";
+var FOLDER_ID_PARIS = "1LFIBfIa4C4xaIowpRW15oz1e2iXjkr4N";
 var PORTFOLIO = "rovafilms.com";
 var IG_KEVIN = "https://www.instagram.com/kevinrogovits/";
 var IG_VALERIA = "https://www.instagram.com/valeriaraileanphoto/";
@@ -452,25 +455,28 @@ function discoverSheetId(folderId, callback) {
   .catch(function(e){ console.error("Erreur Drive:", e); callback(null); });
 }
 
+// Paris utilise la même structure de colonnes et les mêmes modèles de mail que Québec
 function getActiveSheetName() {
-  return SHEET_ID === SHEET_ID_BC ? "🏔️ Vancouver BC" : "🍁 Québec";
+  if (SHEET_ID === SHEET_ID_BC) return "🏔️ Vancouver BC";
+  if (SHEET_ID === SHEET_ID_PARIS) return "🗼 Paris";
+  return "🍁 Québec";
 }
 function getActiveRegion() {
-  return SHEET_ID === SHEET_ID_BC ? "bc" : "qc";
+  if (SHEET_ID === SHEET_ID_BC) return "bc";
+  if (SHEET_ID === SHEET_ID_PARIS) return "paris";
+  return "qc";
 }
 
 function loadFromSheets() {
   if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
   showToast("Chargement des prospects...","info");
-  var isBC = getActiveRegion() === "bc";
-  if (isBC) {
-    // Auto-discover le bon fichier Sheets dans le dossier Drive BC
-    discoverSheetId(FOLDER_ID_BC, function(newId) {
-      if (newId && newId !== SHEET_ID_BC) {
-        SHEET_ID_BC = newId;
-        SHEET_ID = newId;
-        console.log("Nouvel ID BC d\u00e9tect\u00e9: " + newId);
-      } else if (newId) {
+  var activeRegion = getActiveRegion();
+  if (activeRegion === "bc" || activeRegion === "paris") {
+    // Auto-discover le bon fichier Sheets dans le dossier Drive de la r\u00e9gion (BC ou Paris)
+    var folderId = activeRegion === "bc" ? FOLDER_ID_BC : FOLDER_ID_PARIS;
+    discoverSheetId(folderId, function(newId) {
+      if (newId) {
+        if (activeRegion === "bc") SHEET_ID_BC = newId; else SHEET_ID_PARIS = newId;
         SHEET_ID = newId;
       }
       doLoadFromSheets();
@@ -532,7 +538,7 @@ function setF(type, el) {
   el.className = type==="region"?"pill ractive":"pill active";
   S.filters[type] = el.dataset.v;
   if (type === "region" && el.dataset.v !== "all") {
-    var newSheet = el.dataset.v === "bc" ? SHEET_ID_BC : SHEET_ID_QC;
+    var newSheet = el.dataset.v === "bc" ? SHEET_ID_BC : el.dataset.v === "paris" ? SHEET_ID_PARIS : SHEET_ID_QC;
     if (SHEET_ID !== newSheet) {
       SHEET_ID = newSheet;
       if (S.connected) loadFromSheets();
