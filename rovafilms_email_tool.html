@@ -189,6 +189,7 @@ body.dark .rate-pct{color:#888}
     <div class="plist" id="plist"></div>
     <div class="toolbar">
       <span class="selcount" id="scnt">0 s&eacute;lectionn&eacute;</span>
+      <button class="btn-skip" id="dbtn" onclick="deleteSelected()" disabled title="Supprime les prospects coch&eacute;s dans le Google Sheet">&#128465; Supprimer</button>
       <button class="btn-main" id="pbtn" onclick="startBatch()" disabled>Pr&eacute;visualiser &amp; Envoyer</button>
     </div>
   </div>
@@ -490,7 +491,7 @@ function doLoadFromSheets() {
   .then(function(data){
     console.log("Sheets:", JSON.stringify(data).substring(0,300));
     if (data.error) { showToast("Erreur: "+data.error.message,"error"); return; }
-    if (!data.values || !data.values.length) { showToast("Aucune donnée trouvée","error"); return; }
+    if (!data.values || !data.values.length) { S.prospects=[]; render(); updateStats(); showToast("Sheet vide : aucun prospect","info"); return; }
 
     var colEmail = isBC ? 8 : 6;
     var colStatut = isBC ? 9 : 7;
@@ -584,6 +585,63 @@ function updateSelCount(){
   var n=S.selected.size;
   document.getElementById("scnt").textContent=n+" s\u00e9lectionn\u00e9"+(n>1?"s":"");
   document.getElementById("pbtn").disabled=n===0;
+  document.getElementById("dbtn").disabled=n===0;
+}
+
+// Supprime les prospects cochés DANS le Google Sheet (vide les cellules, garde lignes, menus déroulants et formules)
+function colLetter(n){ var s=""; n=n+1; while(n>0){ var m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
+
+function deleteSelected(){
+  if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
+  var sel = S.prospects.filter(function(p){ return S.selected.has(p.id); });
+  if (!sel.length) return;
+  var sn = getActiveSheetName();
+  if (!confirm("Supprimer " + sel.length + " prospect" + (sel.length>1?"s":"") + " du Google Sheet « " + sn + " » ?\n\nLes lignes seront vidées dans le Sheet.")) return;
+  if (!confirm("DERNIÈRE CONFIRMATION\n\nCette action est définitive (seul l'historique des versions de Google permet de revenir en arrière).\n\nSupprimer " + sel.length + " prospect" + (sel.length>1?"s":"") + " ?")) return;
+  showToast("Suppression en cours...","info");
+  var rng = encodeURIComponent(sn + "!A1:V300");
+  fetch("https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values/" + rng + "?valueRenderOption=FORMULA", {
+    headers: {"Authorization":"Bearer "+S.gmailToken}
+  }).then(function(r){ return r.json(); })
+  .then(function(data){
+    if (data.error) { showToast("Erreur: "+data.error.message,"error"); return; }
+    var vals = data.values || [];
+    var used = {}, ranges = [], notFound = 0;
+    sel.forEach(function(p){
+      var rowIndex = -1;
+      for (var i=0;i<vals.length;i++){
+        if (used[i]) continue;
+        var a = (vals[i][0]||"").toString().trim(), b = (vals[i][1]||"").toString().trim();
+        if (a !== "" && !isNaN(a) && b === (p.nom||"").trim()) { rowIndex = i; break; }
+      }
+      if (rowIndex === -1) { notFound++; return; }
+      used[rowIndex] = true;
+      var row = vals[rowIndex], r = rowIndex + 1, start = -1;
+      // on vide B..V, sauf la colonne A (numéro) et les formules (ex: date de relance)
+      for (var c=1; c<=22; c++){
+        var cell = (c < row.length && row[c] != null) ? row[c].toString() : "";
+        var isFormula = cell.charAt(0) === "=";
+        if (!isFormula && start === -1) start = c;
+        if ((isFormula || c === 22) && start !== -1) {
+          var end = isFormula ? c-1 : c;
+          ranges.push(sn + "!" + colLetter(start) + r + ":" + colLetter(end) + r);
+          start = -1;
+        }
+      }
+    });
+    if (!ranges.length) { showToast("Aucune ligne trouvée dans le Sheet","error"); return; }
+    return fetch("https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values:batchClear", {
+      method: "POST",
+      headers: {"Authorization":"Bearer "+S.gmailToken, "Content-Type":"application/json"},
+      body: JSON.stringify({ranges: ranges})
+    }).then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res.error) { showToast("Erreur: "+res.error.message,"error"); return; }
+      S.selected.clear();
+      showToast("✅ " + (sel.length-notFound) + " prospect(s) supprimé(s)" + (notFound?" ("+notFound+" introuvable(s))":""),"success");
+      loadFromSheets();
+    });
+  }).catch(function(e){ showToast("Erreur réseau: "+e.message,"error"); });
 }
 function updateStats(){
   document.getElementById("s0").textContent=S.prospects.length;
