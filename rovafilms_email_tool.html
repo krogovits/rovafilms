@@ -138,6 +138,34 @@ body.dark .reload-btn{border-color:#c9a84c;color:#c9a84c}
 body.dark .rate-track{background:#2a2a2a}
 body.dark .rate-label{color:#ccc}
 body.dark .rate-pct{color:#888}
+/* Boites de dialogue Rovafilms */
+.dlg-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;transition:opacity .15s}
+.dlg-ov.show{opacity:1}
+.dlg{background:#fff;border:1px solid #e0e0e0;border-radius:12px;width:440px;max-width:calc(100vw - 32px);padding:22px 24px 18px;box-shadow:0 20px 60px rgba(0,0,0,.35);transform:translateY(8px) scale(.98);transition:transform .15s}
+.dlg-ov.show .dlg{transform:none}
+.dlg-title{font-size:15px;font-weight:600;color:#0d0d0d;letter-spacing:.02em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.dlg-title .dlg-ico{color:#c9a84c}
+.dlg.danger .dlg-title .dlg-ico{color:#e74c3c}
+.dlg-body{font-size:13px;line-height:1.6;color:#555}
+.dlg-body b{color:#1a1a1a}
+.dlg-body ul{margin:8px 0 0 18px}
+.dlg-input{width:100%;margin-top:12px;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none;background:#fafafa;color:#1a1a1a}
+.dlg-input:focus{border-color:#c9a84c}
+.dlg-err{color:#e74c3c;font-size:12px;margin-top:6px;min-height:16px}
+.dlg-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.dlg-cancel{background:transparent;color:#666;border:1px solid #ddd;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer}
+.dlg-ok{background:#0d0d0d;color:#c9a84c;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer}
+.dlg.danger .dlg-ok{background:#e74c3c;color:#fff}
+body.dark .dlg{background:#161616;border-color:#2a2a2a}
+body.dark .dlg-title{color:#c9a84c}
+body.dark .dlg.danger .dlg-title{color:#e8e8e8}
+body.dark .dlg-body{color:#aaa}
+body.dark .dlg-body b{color:#e8e8e8}
+body.dark .dlg-input{background:#1f1f1f;border-color:#333;color:#e8e8e8}
+body.dark .dlg-input:focus{border-color:#c9a84c}
+body.dark .dlg-cancel{border-color:#333;color:#aaa}
+body.dark .dlg-ok{background:#c9a84c;color:#0d0d0d}
+body.dark .dlg.danger .dlg-ok{background:#c0392b;color:#fff}
 </style>
 </head>
 <body>
@@ -535,16 +563,62 @@ function loadRegions() {
   }).catch(function(e){ console.error("Regions:", e); });
 }
 
+// Boite de dialogue au style de l'outil (remplace prompt/confirm/alert du navigateur)
+// opts: {title, icon, html, input:{placeholder,value}, ok, cancel (false = pas de bouton), danger, validate(value) -> message d'erreur ou ""}
+// Renvoie une Promise : valeur saisie (ou true) si OK, null si Annuler / Echap
+function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function uiDialog(opts){
+  return new Promise(function(resolve){
+    var ov = document.createElement("div"); ov.className = "dlg-ov";
+    ov.innerHTML = '<div class="dlg'+(opts.danger?" danger":"")+'" role="dialog" aria-modal="true">' +
+      '<div class="dlg-title">'+(opts.icon?'<span class="dlg-ico">'+opts.icon+'</span>':'')+esc(opts.title||"")+'</div>' +
+      '<div class="dlg-body">'+(opts.html||"")+'</div>' +
+      (opts.input ? '<input class="dlg-input" type="text" autocomplete="off" spellcheck="false">' + '<div class="dlg-err"></div>' : '') +
+      '<div class="dlg-btns">' +
+        (opts.cancel===false ? '' : '<button class="dlg-cancel">'+esc(opts.cancel||"Annuler")+'</button>') +
+        '<button class="dlg-ok">'+esc(opts.ok||"OK")+'</button>' +
+      '</div></div>';
+    document.body.appendChild(ov);
+    var inp = ov.querySelector(".dlg-input"), err = ov.querySelector(".dlg-err"), okb = ov.querySelector(".dlg-ok"), cb = ov.querySelector(".dlg-cancel");
+    if (inp) { inp.placeholder = (opts.input.placeholder||""); inp.value = (opts.input.value||""); }
+    function close(v){ document.removeEventListener("keydown", onKey, true); ov.classList.remove("show"); setTimeout(function(){ ov.remove(); }, 150); resolve(v); }
+    function ok(){
+      if (inp) {
+        var v = inp.value.replace(/\s+/g," ").trim();
+        var m = !v ? "Tape un nom" : (opts.validate ? opts.validate(v) : "");
+        if (m) { err.textContent = m; inp.focus(); return; }
+        close(v);
+      } else close(true);
+    }
+    function onKey(e){
+      if (e.key === "Escape") { e.preventDefault(); close(opts.cancel===false ? true : null); }
+      else if (e.key === "Enter") { e.preventDefault(); ok(); }
+    }
+    document.addEventListener("keydown", onKey, true);
+    okb.onclick = ok;
+    if (cb) cb.onclick = function(){ close(null); };
+    ov.addEventListener("mousedown", function(e){ if (e.target === ov && opts.cancel !== false) close(null); });
+    if (inp) inp.addEventListener("input", function(){ err.textContent = ""; });
+    requestAnimationFrame(function(){ ov.classList.add("show"); (inp || okb).focus(); });
+  });
+}
+
 // Bouton "+ Ajouter une r\u00e9gion" : cr\u00e9e le dossier Drive + un Google Sheet vide (copie de la structure Qu\u00e9bec)
 function addRegion() {
   if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
-  var name = prompt("Nom de la nouvelle r\u00e9gion (ex : Vietnam, Toronto, Bali)");
-  if (name === null) return;
-  name = name.replace(/\s+/g," ").trim();
-  if (!name) return;
-  var exists = Object.keys(REGIONS).some(function(k){ return REGIONS[k].name.toLowerCase() === name.toLowerCase(); });
-  if (exists) { showToast("La r\u00e9gion \u00ab "+name+" \u00bb existe d\u00e9j\u00e0","error"); return; }
-  if (!confirm("Cr\u00e9er la r\u00e9gion \u00ab " + name + " \u00bb ?\n\nDans Google Drive (UGC Automatisation) :\n\u2022 un dossier \u00ab " + name + " \u00bb\n\u2022 un Google Sheet vide avec les bonnes colonnes")) return;
+  uiDialog({
+    title: "Nouvelle r\u00e9gion", icon: "\ud83d\udccd",
+    html: "Cr\u00e9e dans Google Drive (<b>UGC Automatisation</b>) un dossier \u00e0 ce nom et un Google Sheet vide avec les bonnes colonnes.",
+    input: {placeholder: "Ex : Vietnam, Toronto, Bali"},
+    ok: "Cr\u00e9er la r\u00e9gion",
+    validate: function(v){
+      var exists = Object.keys(REGIONS).some(function(k){ return REGIONS[k].name.toLowerCase() === v.toLowerCase(); });
+      return exists ? "La r\u00e9gion \u00ab " + v + " \u00bb existe d\u00e9j\u00e0" : "";
+    }
+  }).then(function(name){ if (name) createRegion(name); });
+}
+
+function createRegion(name) {
   showToast("Cr\u00e9ation de la r\u00e9gion...","info");
   var folderId, sheetId, tabTitle = "\ud83d\udccd " + name, src = REGIONS.qc;
   gapi("https://www.googleapis.com/drive/v3/files", "POST", {name:name, mimeType:"application/vnd.google-apps.folder", parents:[ROOT_FOLDER_ID]})
@@ -590,7 +664,8 @@ function addRegion() {
     console.error(e);
     var m = e.message || "";
     if (/insufficient|scope|permission/i.test(m)) m = "Droits Drive manquants : d\u00e9connecte/reconnecte Gmail et accepte l'acc\u00e8s Drive.";
-    alert("La r\u00e9gion n'a pas pu \u00eatre cr\u00e9\u00e9e compl\u00e8tement.\n\n" + m + (folderId ? "\n\nUn dossier \u00ab " + name + " \u00bb a peut-\u00eatre \u00e9t\u00e9 cr\u00e9\u00e9 dans le Drive : v\u00e9rifie-le avant de r\u00e9essayer." : ""));
+    uiDialog({title: "R\u00e9gion non cr\u00e9\u00e9e", icon: "\u26a0\ufe0f", danger: true, cancel: false, ok: "OK",
+      html: esc(m) + (folderId ? "<br><br>Un dossier <b>" + esc(name) + "</b> a peut-\u00eatre \u00e9t\u00e9 cr\u00e9\u00e9 dans le Drive : v\u00e9rifie-le avant de r\u00e9essayer." : "")});
   });
 }
 
@@ -727,8 +802,22 @@ function deleteSelected(){
   var sel = S.prospects.filter(function(p){ return S.selected.has(p.id); });
   if (!sel.length) return;
   var sn = getActiveSheetName();
-  if (!confirm("Supprimer " + sel.length + " prospect" + (sel.length>1?"s":"") + " du Google Sheet « " + sn + " » ?\n\nLes lignes seront vidées dans le Sheet.")) return;
-  if (!confirm("DERNIÈRE CONFIRMATION\n\nCette action est définitive (seul l'historique des versions de Google permet de revenir en arrière).\n\nSupprimer " + sel.length + " prospect" + (sel.length>1?"s":"") + " ?")) return;
+  var n = sel.length, lbl = n + " prospect" + (n>1?"s":"");
+  uiDialog({
+    title: "Supprimer " + lbl + " ?", icon: "\ud83d\uddd1", danger: true,
+    html: "Les lignes seront vid\u00e9es dans le Google Sheet <b>" + esc(sn) + "</b>.<br>Num\u00e9ros, formules et menus d\u00e9roulants sont conserv\u00e9s.",
+    ok: "Continuer"
+  }).then(function(go){
+    if (!go) return null;
+    return uiDialog({
+      title: "Derni\u00e8re confirmation", icon: "\u26a0\ufe0f", danger: true,
+      html: "Cette action est <b>d\u00e9finitive</b> : seul l'historique des versions de Google Sheets permet de revenir en arri\u00e8re.",
+      ok: "Supprimer " + lbl
+    });
+  }).then(function(go){ if (go) doDeleteSelected(sel, sn); });
+}
+
+function doDeleteSelected(sel, sn){
   showToast("Suppression en cours...","info");
   var rng = encodeURIComponent(sn + "!A1:V300");
   fetch("https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values/" + rng + "?valueRenderOption=FORMULA", {
@@ -844,9 +933,14 @@ function startBatch(){
   var sel=S.prospects.filter(function(p){return S.selected.has(p.id);});
   if(!sel.length)return;
   if(sel.length>=8){
-    var ok=confirm("Tu es sur le point d'envoyer "+sel.length+" emails. Confirmer l'envoi ?");
-    if(!ok) return;
+    uiDialog({title:"Envoyer "+sel.length+" emails ?", icon:"\u2709\ufe0f",
+      html:"Tu vas pr\u00e9visualiser puis envoyer <b>"+sel.length+" emails</b> depuis hello.rovafilms@gmail.com.",
+      ok:"Continuer"}).then(function(go){ if(go) runBatch(sel); });
+    return;
   }
+  runBatch(sel);
+}
+function runBatch(sel){
   S.queue=sel.map(function(p){return{prospect:p,status:"pending"};});
   S.qIdx=0;
   document.getElementById("emptystate").style.display="none";
