@@ -159,6 +159,9 @@ body.dark .rate-pct{color:#888}
         <div class="pill" data-v="bc" onclick="setF('region',this)">Vancouver BC</div>
         <div class="pill" data-v="paris" onclick="setF('region',this)">Paris</div>
       </div>
+      <div class="frow" style="margin-top:6px">
+        <div class="pill" id="addreg" style="border-style:dashed;color:#c9a84c" onclick="addRegion()" title="Cr&eacute;e le dossier et le Google Sheet de la r&eacute;gion dans le Drive">+ Ajouter une r&eacute;gion</div>
+      </div>
       <div class="flabel" style="margin-top:10px">Cat&eacute;gorie</div>
       <div class="frow" id="cf">
         <div class="pill active" data-v="all" onclick="setF('cat',this)">Toutes</div>
@@ -252,6 +255,16 @@ var SHEET_ID = SHEET_ID_QC;
 var FOLDER_ID_QC = "1hyQUuHSeGblSlrM6OGdQHWtooUUI_J2j";
 var FOLDER_ID_BC = "1rYurGwu2nYmpTfrKCKEGSrDJo0fQEzi3";
 var FOLDER_ID_PARIS = "1LFIBfIa4C4xaIowpRW15oz1e2iXjkr4N";
+// Dossier Drive "UGC Automatisation" : chaque sous-dossier = une r\u00e9gion
+var ROOT_FOLDER_ID = "1TXs7rtX-sx_pryTiiG717SGBaOnZLJF8";
+// Registre des r\u00e9gions. Les r\u00e9gions ajout\u00e9es depuis l'outil (ou trouv\u00e9es dans le Drive) s'y ajoutent toutes seules.
+// tab:null = on lit le nom du premier onglet du Sheet. Les nouvelles r\u00e9gions ont la structure de colonnes du Qu\u00e9bec.
+var REGIONS = {
+  qc:    {name:"Qu\u00e9bec",      folder:FOLDER_ID_QC,    sheetId:SHEET_ID_QC,    tab:"\ud83c\udf41 Qu\u00e9bec",          discover:false},
+  bc:    {name:"Vancouver BC", folder:FOLDER_ID_BC,    sheetId:SHEET_ID_BC,    tab:"\ud83c\udfd4\ufe0f Vancouver BC", discover:true},
+  paris: {name:"Paris",        folder:FOLDER_ID_PARIS, sheetId:SHEET_ID_PARIS, tab:"\ud83d\uddfc Paris",           discover:true}
+};
+var ACTIVE_REGION = "qc";
 var PORTFOLIO = "rovafilms.com";
 var IG_KEVIN = "https://www.instagram.com/kevinrogovits/";
 var IG_VALERIA = "https://www.instagram.com/valeriaraileanphoto/";
@@ -455,35 +468,130 @@ function discoverSheetId(folderId, callback) {
   .catch(function(e){ console.error("Erreur Drive:", e); callback(null); });
 }
 
-// Paris utilise la même structure de colonnes et les mêmes modèles de mail que Québec
-function getActiveSheetName() {
-  if (SHEET_ID === SHEET_ID_BC) return "🏔️ Vancouver BC";
-  if (SHEET_ID === SHEET_ID_PARIS) return "🗼 Paris";
-  return "🍁 Québec";
+// Paris et les r\u00e9gions ajout\u00e9es utilisent la m\u00eame structure de colonnes et les m\u00eames mod\u00e8les de mail que Qu\u00e9bec
+function getActiveSheetName() { return REGIONS[ACTIVE_REGION].tab; }
+function getActiveRegion() { return ACTIVE_REGION; }
+function gapi(url, method, body) {
+  var o = { method: method || "GET", headers: {"Authorization": "Bearer " + S.gmailToken} };
+  if (body) { o.headers["Content-Type"] = "application/json"; o.body = JSON.stringify(body); }
+  return fetch(url, o).then(function(r){ return r.json(); }).then(function(d){
+    if (d && d.error) throw new Error(d.error.message || "Erreur Google");
+    return d;
+  });
 }
-function getActiveRegion() {
-  if (SHEET_ID === SHEET_ID_BC) return "bc";
-  if (SHEET_ID === SHEET_ID_PARIS) return "paris";
-  return "qc";
+
+// Onglet des prospects : pas le Dashboard ni le Mode d'emploi
+function pickProspectTab(titles) {
+  for (var i=0;i<titles.length;i++) { if (!/dashboard|tableau de bord|mode d|emploi|guide/i.test(titles[i])) return titles[i]; }
+  return titles[0];
 }
 
 function loadFromSheets() {
   if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
   showToast("Chargement des prospects...","info");
-  var activeRegion = getActiveRegion();
-  if (activeRegion === "bc" || activeRegion === "paris") {
-    // Auto-discover le bon fichier Sheets dans le dossier Drive de la r\u00e9gion (BC ou Paris)
-    var folderId = activeRegion === "bc" ? FOLDER_ID_BC : FOLDER_ID_PARIS;
-    discoverSheetId(folderId, function(newId) {
-      if (newId) {
-        if (activeRegion === "bc") SHEET_ID_BC = newId; else SHEET_ID_PARIS = newId;
-        SHEET_ID = newId;
-      }
-      doLoadFromSheets();
+  var R = REGIONS[ACTIVE_REGION];
+  function withTab() {
+    if (!R.sheetId) { S.prospects=[]; render(); updateStats(); showToast("Aucun Google Sheet dans le dossier \u00ab "+R.name+" \u00bb","error"); return; }
+    SHEET_ID = R.sheetId;
+    if (R.tab) { doLoadFromSheets(); return; }
+    gapi("https://sheets.googleapis.com/v4/spreadsheets/" + R.sheetId + "?fields=sheets.properties.title")
+    .then(function(d){ R.tab = pickProspectTab(d.sheets.map(function(s){ return s.properties.title; })); doLoadFromSheets(); })
+    .catch(function(e){ showToast("Erreur: "+e.message,"error"); });
+  }
+  if (R.discover) {
+    // Auto-discover : le Google Sheet le plus r\u00e9cent du dossier Drive de la r\u00e9gion
+    discoverSheetId(R.folder, function(newId) {
+      if (newId) { if (newId !== R.sheetId && R.dynamic) R.tab = null; R.sheetId = newId; }
+      withTab();
     });
     return;
   }
-  doLoadFromSheets();
+  withTab();
+}
+
+// Ajoute un bouton de r\u00e9gion dans la barre
+function addRegionPill(key) {
+  var rf = document.getElementById("rf");
+  if (rf.querySelector('[data-v="'+key+'"]')) return;
+  var d = document.createElement("div");
+  d.className = "pill"; d.setAttribute("data-v", key); d.textContent = REGIONS[key].name;
+  d.onclick = function(){ setF("region", d); };
+  rf.appendChild(d);
+}
+
+// Lit les sous-dossiers de "UGC Automatisation" : chaque dossier inconnu devient une r\u00e9gion
+function loadRegions() {
+  var q = "'" + ROOT_FOLDER_ID + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  return gapi("https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(q) + "&pageSize=100&fields=files(id,name)")
+  .then(function(d){
+    var known = {};
+    Object.keys(REGIONS).forEach(function(k){ known[REGIONS[k].folder] = true; });
+    (d.files || []).forEach(function(f){
+      var n = (f.name || "").trim();
+      if (known[f.id] || !n || n.charAt(0) === "_" || n.toLowerCase().indexOf("archive") === 0) return;
+      REGIONS["r_" + f.id] = {name:n, folder:f.id, sheetId:null, tab:null, discover:true, dynamic:true};
+      addRegionPill("r_" + f.id);
+    });
+  }).catch(function(e){ console.error("Regions:", e); });
+}
+
+// Bouton "+ Ajouter une r\u00e9gion" : cr\u00e9e le dossier Drive + un Google Sheet vide (copie de la structure Qu\u00e9bec)
+function addRegion() {
+  if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
+  var name = prompt("Nom de la nouvelle r\u00e9gion (ex : Vietnam, Toronto, Bali)");
+  if (name === null) return;
+  name = name.replace(/\s+/g," ").trim();
+  if (!name) return;
+  var exists = Object.keys(REGIONS).some(function(k){ return REGIONS[k].name.toLowerCase() === name.toLowerCase(); });
+  if (exists) { showToast("La r\u00e9gion \u00ab "+name+" \u00bb existe d\u00e9j\u00e0","error"); return; }
+  if (!confirm("Cr\u00e9er la r\u00e9gion \u00ab " + name + " \u00bb ?\n\nDans Google Drive (UGC Automatisation) :\n\u2022 un dossier \u00ab " + name + " \u00bb\n\u2022 un Google Sheet vide avec les bonnes colonnes")) return;
+  showToast("Cr\u00e9ation de la r\u00e9gion...","info");
+  var folderId, sheetId, tabTitle = "\ud83d\udccd " + name, src = REGIONS.qc;
+  gapi("https://www.googleapis.com/drive/v3/files", "POST", {name:name, mimeType:"application/vnd.google-apps.folder", parents:[ROOT_FOLDER_ID]})
+  .then(function(f){
+    folderId = f.id;
+    return gapi("https://www.googleapis.com/drive/v3/files/" + src.sheetId + "/copy", "POST",
+      {name:"Rovafilms_Prospects_" + name.replace(/[^A-Za-z0-9\u00c0-\u017f]+/g,"_"), parents:[folderId]});
+  })
+  .then(function(f){
+    sheetId = f.id;
+    return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + sheetId + "?fields=sheets.properties");
+  })
+  .then(function(d){
+    // on garde l'onglet mod\u00e8le (celui du Qu\u00e9bec), on le renomme
+    var keep = null;
+    d.sheets.forEach(function(s){ if (s.properties.title === src.tab) keep = s.properties; });
+    if (!keep) keep = d.sheets[0].properties;
+    return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + sheetId + ":batchUpdate", "POST",
+      {requests:[{updateSheetProperties:{properties:{sheetId:keep.sheetId, title:tabTitle}, fields:"title"}}]});
+  })
+  .then(function(){
+    return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + sheetId + "/values/" + encodeURIComponent(tabTitle + "!A1:V300") + "?valueRenderOption=FORMULA");
+  })
+  .then(function(d){
+    // on vide tous les prospects copi\u00e9s (lignes dont la colonne A est un num\u00e9ro), sans toucher aux formules
+    var vals = d.values || [], ranges = [];
+    for (var i=0;i<vals.length;i++){
+      var a = (vals[i][0]||"").toString().trim();
+      if (a === "" || isNaN(a)) continue;
+      ranges = ranges.concat(rowClearRanges(vals[i], i+1, tabTitle));
+    }
+    if (!ranges.length) return null;
+    return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + sheetId + "/values:batchClear", "POST", {ranges:ranges});
+  })
+  .then(function(){
+    var key = "r_" + folderId;
+    REGIONS[key] = {name:name, folder:folderId, sheetId:sheetId, tab:tabTitle, discover:true, dynamic:true};
+    addRegionPill(key);
+    showToast("\u2705 R\u00e9gion \u00ab " + name + " \u00bb cr\u00e9\u00e9e","success");
+    setF("region", document.getElementById("rf").querySelector('[data-v="'+key+'"]'));
+  })
+  .catch(function(e){
+    console.error(e);
+    var m = e.message || "";
+    if (/insufficient|scope|permission/i.test(m)) m = "Droits Drive manquants : d\u00e9connecte/reconnecte Gmail et accepte l'acc\u00e8s Drive.";
+    alert("La r\u00e9gion n'a pas pu \u00eatre cr\u00e9\u00e9e compl\u00e8tement.\n\n" + m + (folderId ? "\n\nUn dossier \u00ab " + name + " \u00bb a peut-\u00eatre \u00e9t\u00e9 cr\u00e9\u00e9 dans le Drive : v\u00e9rifie-le avant de r\u00e9essayer." : ""));
+  });
 }
 
 function doLoadFromSheets() {
@@ -538,9 +646,10 @@ function setF(type, el) {
   el.className = type==="region"?"pill ractive":"pill active";
   S.filters[type] = el.dataset.v;
   if (type === "region" && el.dataset.v !== "all") {
-    var newSheet = el.dataset.v === "bc" ? SHEET_ID_BC : el.dataset.v === "paris" ? SHEET_ID_PARIS : SHEET_ID_QC;
-    if (SHEET_ID !== newSheet) {
-      SHEET_ID = newSheet;
+    if (REGIONS[el.dataset.v] && ACTIVE_REGION !== el.dataset.v) {
+      ACTIVE_REGION = el.dataset.v;
+      if (REGIONS[ACTIVE_REGION].sheetId) SHEET_ID = REGIONS[ACTIVE_REGION].sheetId;
+      S.selected.clear();
       if (S.connected) loadFromSheets();
     }
   }
@@ -597,6 +706,22 @@ function updateSelCount(){
 // Supprime les prospects cochés DANS le Google Sheet (vide les cellules, garde lignes, menus déroulants et formules)
 function colLetter(n){ var s=""; n=n+1; while(n>0){ var m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
 
+// Plages \u00e0 vider pour une ligne : B..V, sauf la colonne A (num\u00e9ro) et les formules (ex: date de relance)
+function rowClearRanges(row, r, sn){
+  var out = [], start = -1;
+  for (var c=1; c<=22; c++){
+    var cell = (c < row.length && row[c] != null) ? row[c].toString() : "";
+    var isFormula = cell.charAt(0) === "=";
+    if (!isFormula && start === -1) start = c;
+    if ((isFormula || c === 22) && start !== -1) {
+      var end = isFormula ? c-1 : c;
+      if (end >= start) out.push(sn + "!" + colLetter(start) + r + ":" + colLetter(end) + r);
+      start = -1;
+    }
+  }
+  return out;
+}
+
 function deleteSelected(){
   if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
   var sel = S.prospects.filter(function(p){ return S.selected.has(p.id); });
@@ -622,18 +747,7 @@ function deleteSelected(){
       }
       if (rowIndex === -1) { notFound++; return; }
       used[rowIndex] = true;
-      var row = vals[rowIndex], r = rowIndex + 1, start = -1;
-      // on vide B..V, sauf la colonne A (numéro) et les formules (ex: date de relance)
-      for (var c=1; c<=22; c++){
-        var cell = (c < row.length && row[c] != null) ? row[c].toString() : "";
-        var isFormula = cell.charAt(0) === "=";
-        if (!isFormula && start === -1) start = c;
-        if ((isFormula || c === 22) && start !== -1) {
-          var end = isFormula ? c-1 : c;
-          ranges.push(sn + "!" + colLetter(start) + r + ":" + colLetter(end) + r);
-          start = -1;
-        }
-      }
+      ranges = ranges.concat(rowClearRanges(vals[rowIndex], rowIndex + 1, sn));
     });
     if (!ranges.length) { showToast("Aucune ligne trouvée dans le Sheet","error"); return; }
     return fetch("https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values:batchClear", {
@@ -832,7 +946,7 @@ function toggleEdit(){
 }
 
 function connectGmail(){
-  var scope=encodeURIComponent("https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly");
+  var scope=encodeURIComponent("https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive");
   var callbackUrl = location.href.replace('rovafilms_email_tool.html','oauth_callback.html').split('?')[0].split('#')[0];
   var url="https://accounts.google.com/o/oauth2/v2/auth?client_id="+CLIENT_ID+"&redirect_uri="+encodeURIComponent(callbackUrl)+"&response_type=token&scope="+scope+"&prompt=consent";
   window.open(url,"_blank","width=500,height=600");
@@ -851,7 +965,7 @@ function checkAuth(){
     document.getElementById("abtn").textContent="\u2713 Connect\u00e9";
     document.getElementById("abtn").style.background="#27ae60";
     showToast("Gmail connect\u00e9 !","success");
-    setTimeout(loadFromSheets,800);
+    loadRegions(); setTimeout(loadFromSheets,800);
   });
   // Fallback: si le token est dans le hash de la page courante
   var hash=window.location.hash;
@@ -865,7 +979,7 @@ function checkAuth(){
   document.getElementById("abtn").style.background="#27ae60";
   window.location.hash="";
   showToast("Gmail connect\u00e9 !","success");
-  setTimeout(loadFromSheets,800);
+  loadRegions(); setTimeout(loadFromSheets,800);
 }
 
 function doSend(to,subject,body){
