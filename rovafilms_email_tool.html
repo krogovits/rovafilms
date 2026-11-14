@@ -139,6 +139,12 @@ body.dark .rate-track{background:#2a2a2a}
 body.dark .rate-label{color:#ccc}
 body.dark .rate-pct{color:#888}
 /* Boites de dialogue Rovafilms */
+.dlg-list{margin-top:12px;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto}
+.dlg-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;font-size:13px;color:#1a1a1a;user-select:none}
+.dlg-item input{accent-color:#e74c3c;width:15px;height:15px;cursor:pointer}
+.dlg-item.on{border-color:#e74c3c;background:#fdf1f0}
+body.dark .dlg-item{border-color:#333;color:#e8e8e8}
+body.dark .dlg-item.on{border-color:#c0392b;background:#2a1716}
 .dlg-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;transition:opacity .15s}
 .dlg-ov.show{opacity:1}
 .dlg{background:#fff;border:1px solid #e0e0e0;border-radius:12px;width:440px;max-width:calc(100vw - 32px);padding:22px 24px 18px;box-shadow:0 20px 60px rgba(0,0,0,.35);transform:translateY(8px) scale(.98);transition:transform .15s}
@@ -189,6 +195,7 @@ body.dark .dlg.danger .dlg-ok{background:#c0392b;color:#fff}
       </div>
       <div class="frow" style="margin-top:6px">
         <div class="pill" id="addreg" style="border-style:dashed;color:#c9a84c" onclick="addRegion()" title="Cr&eacute;e le dossier et le Google Sheet de la r&eacute;gion dans le Drive">+ Ajouter une r&eacute;gion</div>
+        <div class="pill" id="delreg" style="border-style:dashed;color:#e07a7a" onclick="deleteRegions()" title="Met le dossier de la r&eacute;gion et son Google Sheet &agrave; la corbeille du Drive">&minus; Supprimer une r&eacute;gion</div>
       </div>
       <div class="flabel" style="margin-top:10px">Cat&eacute;gorie</div>
       <div class="frow" id="cf">
@@ -497,7 +504,7 @@ function discoverSheetId(folderId, callback) {
 }
 
 // Paris et les r\u00e9gions ajout\u00e9es utilisent la m\u00eame structure de colonnes et les m\u00eames mod\u00e8les de mail que Qu\u00e9bec
-function getActiveSheetName() { return REGIONS[ACTIVE_REGION].tab; }
+function getActiveSheetName() { return REGIONS[ACTIVE_REGION] ? REGIONS[ACTIVE_REGION].tab : ""; }
 function getActiveRegion() { return ACTIVE_REGION; }
 function gapi(url, method, body) {
   var o = { method: method || "GET", headers: {"Authorization": "Bearer " + S.gmailToken} };
@@ -518,6 +525,7 @@ function loadFromSheets() {
   if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
   showToast("Chargement des prospects...","info");
   var R = REGIONS[ACTIVE_REGION];
+  if (!R) { S.prospects=[]; render(); updateStats(); showToast("Choisis une r\u00e9gion","info"); return; }
   function withTab() {
     if (!R.sheetId) { S.prospects=[]; render(); updateStats(); showToast("Aucun Google Sheet dans le dossier \u00ab "+R.name+" \u00bb","error"); return; }
     SHEET_ID = R.sheetId;
@@ -554,6 +562,12 @@ function loadRegions() {
   .then(function(d){
     var known = {};
     Object.keys(REGIONS).forEach(function(k){ known[REGIONS[k].folder] = true; });
+    var live = {};
+    (d.files || []).forEach(function(f){ live[f.id] = (f.name || "").trim(); });
+    Object.keys(REGIONS).forEach(function(k){
+      var n = live[REGIONS[k].folder];
+      if (n === undefined || n.charAt(0) === "_" || n.toLowerCase().indexOf("archive") === 0) removeRegionLocal(k);
+    });
     (d.files || []).forEach(function(f){
       var n = (f.name || "").trim();
       if (known[f.id] || !n || n.charAt(0) === "_" || n.toLowerCase().indexOf("archive") === 0) return;
@@ -561,6 +575,71 @@ function loadRegions() {
       addRegionPill("r_" + f.id);
     });
   }).catch(function(e){ console.error("Regions:", e); });
+}
+
+// Retire une r\u00e9gion de l'outil (bouton + registre)
+function removeRegionLocal(key){
+  delete REGIONS[key];
+  var pill = document.querySelector('#rf [data-v="'+key+'"]');
+  if (pill) pill.remove();
+  if (ACTIVE_REGION === key) {
+    var keys = Object.keys(REGIONS);
+    ACTIVE_REGION = keys.length ? keys[0] : null;
+    S.prospects = []; S.selected.clear();
+    var all = document.querySelector('#rf [data-v="all"]');
+    if (all) setF("region", all);
+    render(); updateStats();
+    if (ACTIVE_REGION && S.connected) loadFromSheets();
+  }
+}
+
+// Bouton "Supprimer une r\u00e9gion" : choisir les r\u00e9gions, puis dossier + Google Sheet \u00e0 la corbeille du Drive
+function deleteRegions(){
+  if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
+  var keys = Object.keys(REGIONS);
+  if (!keys.length) { showToast("Aucune r\u00e9gion \u00e0 supprimer","info"); return; }
+  uiDialog({
+    title: "Supprimer des r\u00e9gions", icon: "\ud83d\uddd1", danger: true,
+    html: "Coche les r\u00e9gions \u00e0 supprimer. Leur dossier et leur Google Sheet partent \u00e0 la <b>corbeille du Drive</b> (r\u00e9cup\u00e9rables 30 jours)." +
+      '<div class="dlg-list">' + keys.map(function(k){
+        return '<label class="dlg-item"><input type="checkbox" value="'+esc(k)+'"><span>'+esc(REGIONS[k].name)+'</span></label>';
+      }).join("") + '</div>',
+    ok: "Continuer",
+    onOpen: function(ov, err){
+      ov.querySelectorAll(".dlg-item input").forEach(function(cb){
+        cb.addEventListener("change", function(){ cb.parentNode.classList.toggle("on", cb.checked); err.textContent = ""; });
+      });
+    },
+    collect: function(ov){
+      var sel = [].map.call(ov.querySelectorAll(".dlg-item input:checked"), function(cb){ return cb.value; });
+      return sel.length ? sel : "Coche au moins une r\u00e9gion";
+    }
+  }).then(function(sel){
+    if (!sel) return null;
+    var names = sel.map(function(k){ return "<b>" + esc(REGIONS[k].name) + "</b>"; }).join(", ");
+    return uiDialog({
+      title: "Derni\u00e8re confirmation", icon: "\u26a0\ufe0f", danger: true,
+      html: "Supprimer " + names + " ?<br>Les prospects de " + (sel.length>1?"ces r\u00e9gions":"cette r\u00e9gion") + " ne seront plus dans l'outil ni suivis par l'Apps Script.",
+      ok: "Supprimer " + (sel.length>1 ? sel.length + " r\u00e9gions" : "la r\u00e9gion")
+    }).then(function(go){ return go ? sel : null; });
+  }).then(function(sel){
+    if (!sel) return;
+    showToast("Suppression en cours...","info");
+    var done = [], failed = [];
+    // Renomme le dossier avec "_" (ignor\u00e9 par l'outil et l'Apps Script) puis le met \u00e0 la corbeille
+    sel.reduce(function(chain, k){
+      return chain.then(function(){
+        var R = REGIONS[k];
+        return gapi("https://www.googleapis.com/drive/v3/files/" + R.folder, "PATCH", {name: "_supprim\u00e9_" + R.name, trashed: true})
+          .then(function(){ done.push(R.name); removeRegionLocal(k); })
+          .catch(function(e){ console.error(e); failed.push(R.name + " (" + e.message + ")"); });
+      });
+    }, Promise.resolve()).then(function(){
+      if (!failed.length) { showToast("\u2705 " + done.join(", ") + " supprim\u00e9" + (done.length>1?"es":"e"), "success"); return; }
+      uiDialog({title: "Suppression incompl\u00e8te", icon: "\u26a0\ufe0f", danger: true, cancel: false, ok: "OK",
+        html: (done.length ? "Supprim\u00e9 : " + esc(done.join(", ")) + "<br><br>" : "") + "Pas supprim\u00e9 : " + esc(failed.join(", "))});
+    });
+  });
 }
 
 // Boite de dialogue au style de l'outil (remplace prompt/confirm/alert du navigateur)
@@ -573,7 +652,8 @@ function uiDialog(opts){
     ov.innerHTML = '<div class="dlg'+(opts.danger?" danger":"")+'" role="dialog" aria-modal="true">' +
       '<div class="dlg-title">'+(opts.icon?'<span class="dlg-ico">'+opts.icon+'</span>':'')+esc(opts.title||"")+'</div>' +
       '<div class="dlg-body">'+(opts.html||"")+'</div>' +
-      (opts.input ? '<input class="dlg-input" type="text" autocomplete="off" spellcheck="false">' + '<div class="dlg-err"></div>' : '') +
+      (opts.input ? '<input class="dlg-input" type="text" autocomplete="off" spellcheck="false">' : '') +
+      '<div class="dlg-err"></div>' +
       '<div class="dlg-btns">' +
         (opts.cancel===false ? '' : '<button class="dlg-cancel">'+esc(opts.cancel||"Annuler")+'</button>') +
         '<button class="dlg-ok">'+esc(opts.ok||"OK")+'</button>' +
@@ -588,6 +668,10 @@ function uiDialog(opts){
         var m = !v ? "Tape un nom" : (opts.validate ? opts.validate(v) : "");
         if (m) { err.textContent = m; inp.focus(); return; }
         close(v);
+      } else if (opts.collect) {
+        var res = opts.collect(ov);
+        if (typeof res === "string") { err.textContent = res; return; }
+        close(res);
       } else close(true);
     }
     function onKey(e){
@@ -599,6 +683,7 @@ function uiDialog(opts){
     if (cb) cb.onclick = function(){ close(null); };
     ov.addEventListener("mousedown", function(e){ if (e.target === ov && opts.cancel !== false) close(null); });
     if (inp) inp.addEventListener("input", function(){ err.textContent = ""; });
+    if (opts.onOpen) opts.onOpen(ov, err);
     requestAnimationFrame(function(){ ov.classList.add("show"); (inp || okb).focus(); });
   });
 }
