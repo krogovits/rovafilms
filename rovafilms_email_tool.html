@@ -521,29 +521,85 @@ function pickProspectTab(titles) {
   return titles[0];
 }
 
+// Trouve le Google Sheet et l'onglet d'une r\u00e9gion -> Promise<R>
+function resolveRegionSheet(key){
+  var R = REGIONS[key];
+  var step = !R.discover ? Promise.resolve() : new Promise(function(res){
+    // Auto-discover : le Google Sheet le plus r\u00e9cent du dossier Drive de la r\u00e9gion
+    discoverSheetId(R.folder, function(newId){
+      if (newId) { if (newId !== R.sheetId && R.dynamic) R.tab = null; R.sheetId = newId; }
+      res();
+    });
+  });
+  return step.then(function(){
+    if (!R.sheetId) throw new Error("aucun Google Sheet dans le dossier");
+    if (R.tab) return R;
+    return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + R.sheetId + "?fields=sheets.properties.title")
+      .then(function(d){ R.tab = pickProspectTab(d.sheets.map(function(s){ return s.properties.title; })); return R; });
+  });
+}
+
+// Lit les prospects d'une r\u00e9gion -> Promise<array>
+function fetchRegionProspects(key){
+  return resolveRegionSheet(key).then(function(R){
+    return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + R.sheetId + "/values/" + encodeURIComponent(R.tab + "!A3:V200"))
+      .then(function(data){ return parseProspectRows(data.values || [], key, R); });
+  });
+}
+
+function parseProspectRows(values, key, R){
+  var isBC = key === "bc";
+  var colEmail = isBC ? 8 : 6;
+  var colStatut = isBC ? 9 : 7;
+  var colDate = isBC ? 10 : 8;
+  var colContact = isBC ? 13 : 11;
+  var colNotes = isBC ? 20 : 13;
+  var colFeature = 18; // DISTINCTIVE FEATURE column (BC only)
+  var rows = values.filter(function(r){ return r[1] && r[1].trim() && !isNaN((r[0]||"").toString().trim()) && (r[0]||"").toString().trim() !== ""; });
+  return rows.map(function(row){
+    var st = "todo";
+    var sr = (row[colStatut]||"").toLowerCase().trim();
+    if (sr === "envoy\u00e9" || sr === "envoye" || sr === "relance j+5" || sr === "relance") st="sent";
+    else if (sr === "en discussion") st="discuss";
+    else if (sr.includes("confirm")) st="confirmed";
+    else if (sr === "\u00e0 envoyer" || sr === "a envoyer" || sr === "") st="todo";
+    var de = null;
+    if (row[colDate] && row[colDate].toString().trim()) {
+      var p = row[colDate].toString().split("/");
+      if (p.length===3) de = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+    }
+    var numCol = (row[0]||"").toString().trim();
+    return { id:0, nom:row[1]||"", cat:row[2]||"", region:key, sheetId:R.sheetId, tab:R.tab,
+             email:row[colEmail]||"", statut:st, dateEnvoi:de, contact:row[colContact]||"", notes:row[colNotes]||"",
+             feature: isBC ? (row[colFeature]||"") : "", bcRow: isBC ? parseInt(numCol) : null };
+  });
+}
+
+// Charge les prospects de TOUTES les r\u00e9gions ; les boutons de r\u00e9gion filtrent ensuite l'affichage
 function loadFromSheets() {
   if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
+  var keys = Object.keys(REGIONS);
+  if (!keys.length) { S.prospects=[]; render(); refreshPanels(); showToast("Aucune r\u00e9gion","info"); return; }
   showToast("Chargement des prospects...","info");
-  var R = REGIONS[ACTIVE_REGION];
-  if (!R) { S.prospects=[]; render(); updateStats(); showToast("Choisis une r\u00e9gion","info"); return; }
-  function withTab() {
-    if (!R.sheetId) { S.prospects=[]; render(); updateStats(); showToast("Aucun Google Sheet dans le dossier \u00ab "+R.name+" \u00bb","error"); return; }
-    SHEET_ID = R.sheetId;
-    if (R.tab) { doLoadFromSheets(); return; }
-    gapi("https://sheets.googleapis.com/v4/spreadsheets/" + R.sheetId + "?fields=sheets.properties.title")
-    .then(function(d){ R.tab = pickProspectTab(d.sheets.map(function(s){ return s.properties.title; })); doLoadFromSheets(); })
-    .catch(function(e){ showToast("Erreur: "+e.message,"error"); });
-  }
-  if (R.discover) {
-    // Auto-discover : le Google Sheet le plus r\u00e9cent du dossier Drive de la r\u00e9gion
-    discoverSheetId(R.folder, function(newId) {
-      if (newId) { if (newId !== R.sheetId && R.dynamic) R.tab = null; R.sheetId = newId; }
-      withTab();
-    });
-    return;
-  }
-  withTab();
+  var token = S.loadSeq = (S.loadSeq || 0) + 1, errors = [];
+  Promise.all(keys.map(function(k){
+    return fetchRegionProspects(k).catch(function(e){ console.error(k, e); errors.push(REGIONS[k] ? REGIONS[k].name : k); return []; });
+  })).then(function(lists){
+    if (token !== S.loadSeq) return; // un chargement plus r\u00e9cent a pris le relais
+    var all = [].concat.apply([], lists);
+    all.forEach(function(p, i){ p.id = i + 1; });
+    S.prospects = all; S.selected.clear();
+    render(); refreshPanels();
+    if (errors.length) showToast("\u26a0\ufe0f " + all.length + " prospects charg\u00e9s \u2014 erreur pour : " + errors.join(", "), "error");
+    else showToast("\u2705 " + all.length + " prospects charg\u00e9s", "success");
+  });
 }
+
+// Prospects de la r\u00e9gion s\u00e9lectionn\u00e9e (ou toutes)
+function regionProspects(){
+  return S.prospects.filter(function(p){ return S.filters.region === "all" || p.region === S.filters.region; });
+}
+function refreshPanels(){ updateStats(); checkRelances(); checkRecentReplies(); updateResponseRates(); }
 
 // Ajoute un bouton de r\u00e9gion dans la barre
 function addRegionPill(key) {
@@ -582,15 +638,10 @@ function removeRegionLocal(key){
   delete REGIONS[key];
   var pill = document.querySelector('#rf [data-v="'+key+'"]');
   if (pill) pill.remove();
-  if (ACTIVE_REGION === key) {
-    var keys = Object.keys(REGIONS);
-    ACTIVE_REGION = keys.length ? keys[0] : null;
-    S.prospects = []; S.selected.clear();
-    var all = document.querySelector('#rf [data-v="all"]');
-    if (all) setF("region", all);
-    render(); updateStats();
-    if (ACTIVE_REGION && S.connected) loadFromSheets();
-  }
+  S.prospects = S.prospects.filter(function(p){ return p.region !== key; });
+  if (ACTIVE_REGION === key) { var keys = Object.keys(REGIONS); ACTIVE_REGION = keys.length ? keys[0] : null; }
+  if (S.filters.region === key) { var all = document.querySelector('#rf [data-v="all"]'); if (all) setF("region", all); }
+  else { S.selected.clear(); render(); refreshPanels(); }
 }
 
 // Bouton "Supprimer une r\u00e9gion" : choisir les r\u00e9gions, puis dossier + Google Sheet \u00e0 la corbeille du Drive
@@ -742,8 +793,9 @@ function createRegion(name) {
     var key = "r_" + folderId;
     REGIONS[key] = {name:name, folder:folderId, sheetId:sheetId, tab:tabTitle, discover:true, dynamic:true};
     addRegionPill(key);
-    showToast("\u2705 R\u00e9gion \u00ab " + name + " \u00bb cr\u00e9\u00e9e","success");
     setF("region", document.getElementById("rf").querySelector('[data-v="'+key+'"]'));
+    loadFromSheets();
+    showToast("\u2705 R\u00e9gion \u00ab " + name + " \u00bb cr\u00e9\u00e9e","success");
   })
   .catch(function(e){
     console.error(e);
@@ -754,64 +806,16 @@ function createRegion(name) {
   });
 }
 
-function doLoadFromSheets() {
-  var sn = getActiveSheetName();
-  var region = getActiveRegion();
-  var isBC = region === "bc";
-  var sheetRange = encodeURIComponent(sn + "!A3:V200");
-  var url = "https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values/" + sheetRange;
-  fetch(url, { headers:{"Authorization":"Bearer "+S.gmailToken} })
-  .then(function(r){ return r.json(); })
-  .then(function(data){
-    console.log("Sheets:", JSON.stringify(data).substring(0,300));
-    if (data.error) { showToast("Erreur: "+data.error.message,"error"); return; }
-    if (!data.values || !data.values.length) { S.prospects=[]; render(); updateStats(); showToast("Sheet vide : aucun prospect","info"); return; }
-
-    var colEmail = isBC ? 8 : 6;
-    var colStatut = isBC ? 9 : 7;
-    var colDate = isBC ? 10 : 8;
-    var colContact = isBC ? 13 : 11;
-    var colNotes = isBC ? 20 : 13;
-    var colFeature = 18; // DISTINCTIVE FEATURE column (BC only)
-
-    var rows = data.values.filter(function(r){ return r[1] && r[1].trim() && !isNaN((r[0]||"").toString().trim()) && (r[0]||"").toString().trim() !== ""; });
-    S.prospects = rows.map(function(row, i){
-      var st = "todo";
-      var sr = (row[colStatut]||"").toLowerCase().trim();
-      if (sr === "envoyé" || sr === "envoye" || sr === "relance j+5" || sr === "relance") st="sent";
-      else if (sr === "en discussion") st="discuss";
-      else if (sr.includes("confirm")) st="confirmed";
-      else if (sr === "à envoyer" || sr === "a envoyer" || sr === "") st="todo";
-      var de = null;
-      if (row[colDate] && row[colDate].trim()) {
-        var p = row[colDate].split("/");
-        if (p.length===3) de = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
-      }
-      var numCol = (row[0]||"").toString().trim();
-      var bcRow = isBC ? parseInt(numCol) : null;
-      return { id:i+1, nom:row[1]||"", cat:row[2]||"", region:region,
-               email:row[colEmail]||"", statut:st, dateEnvoi:de, contact:row[colContact]||"", notes:row[colNotes]||"",
-               feature: isBC ? (row[colFeature]||"") : "", bcRow: bcRow };
-    });
-    render(); updateStats(); checkRelances(); checkRecentReplies(); updateResponseRates();
-    showToast("✅ "+S.prospects.length+" prospects chargés","success");
-  })
-  .catch(function(e){ showToast("Erreur réseau: "+e.message,"error"); console.error(e); });
-}
-
-
 function setF(type, el) {
   var g={region:"rf",cat:"cf",lang:"lf",statut:"sf"}[type];
   document.getElementById(g).querySelectorAll(".pill").forEach(function(p){p.className="pill";});
   el.className = type==="region"?"pill ractive":"pill active";
   S.filters[type] = el.dataset.v;
-  if (type === "region" && el.dataset.v !== "all") {
-    if (REGIONS[el.dataset.v] && ACTIVE_REGION !== el.dataset.v) {
-      ACTIVE_REGION = el.dataset.v;
-      if (REGIONS[ACTIVE_REGION].sheetId) SHEET_ID = REGIONS[ACTIVE_REGION].sheetId;
-      S.selected.clear();
-      if (S.connected) loadFromSheets();
-    }
+  if (type === "region") {
+    if (REGIONS[el.dataset.v]) { ACTIVE_REGION = el.dataset.v; if (REGIONS[ACTIVE_REGION].sheetId) SHEET_ID = REGIONS[ACTIVE_REGION].sheetId; }
+    S.selected.clear();
+    render(); refreshPanels();
+    return;
   }
   render();
 }
@@ -886,11 +890,13 @@ function deleteSelected(){
   if (!S.connected || !S.gmailToken) { showToast("Connectez Gmail d'abord","info"); return; }
   var sel = S.prospects.filter(function(p){ return S.selected.has(p.id); });
   if (!sel.length) return;
-  var sn = getActiveSheetName();
+  var tabs = [];
+  sel.forEach(function(p){ if (tabs.indexOf(p.tab) === -1) tabs.push(p.tab); });
   var n = sel.length, lbl = n + " prospect" + (n>1?"s":"");
   uiDialog({
     title: "Supprimer " + lbl + " ?", icon: "\ud83d\uddd1", danger: true,
-    html: "Les lignes seront vid\u00e9es dans le Google Sheet <b>" + esc(sn) + "</b>.<br>Num\u00e9ros, formules et menus d\u00e9roulants sont conserv\u00e9s.",
+    html: "Les lignes seront vid\u00e9es dans " + (tabs.length>1 ? "les Google Sheets " : "le Google Sheet ") +
+      tabs.map(function(t){ return "<b>" + esc(t) + "</b>"; }).join(", ") + ".<br>Num\u00e9ros, formules et menus d\u00e9roulants sont conserv\u00e9s.",
     ok: "Continuer"
   }).then(function(go){
     if (!go) return null;
@@ -899,53 +905,51 @@ function deleteSelected(){
       html: "Cette action est <b>d\u00e9finitive</b> : seul l'historique des versions de Google Sheets permet de revenir en arri\u00e8re.",
       ok: "Supprimer " + lbl
     });
-  }).then(function(go){ if (go) doDeleteSelected(sel, sn); });
+  }).then(function(go){ if (go) doDeleteSelected(sel); });
 }
 
-function doDeleteSelected(sel, sn){
+function doDeleteSelected(sel){
   showToast("Suppression en cours...","info");
-  var rng = encodeURIComponent(sn + "!A1:V300");
-  fetch("https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values/" + rng + "?valueRenderOption=FORMULA", {
-    headers: {"Authorization":"Bearer "+S.gmailToken}
-  }).then(function(r){ return r.json(); })
-  .then(function(data){
-    if (data.error) { showToast("Erreur: "+data.error.message,"error"); return; }
-    var vals = data.values || [];
-    var used = {}, ranges = [], notFound = 0;
-    sel.forEach(function(p){
-      var rowIndex = -1;
-      for (var i=0;i<vals.length;i++){
-        if (used[i]) continue;
-        var a = (vals[i][0]||"").toString().trim(), b = (vals[i][1]||"").toString().trim();
-        if (a !== "" && !isNaN(a) && b === (p.nom||"").trim()) { rowIndex = i; break; }
-      }
-      if (rowIndex === -1) { notFound++; return; }
-      used[rowIndex] = true;
-      ranges = ranges.concat(rowClearRanges(vals[rowIndex], rowIndex + 1, sn));
+  var groups = {};
+  sel.forEach(function(p){ var g = p.sheetId + "|" + p.tab; (groups[g] = groups[g] || []).push(p); });
+  var removed = 0, notFound = 0, errors = [];
+  Object.keys(groups).reduce(function(chain, g){
+    return chain.then(function(){
+      var list = groups[g], sheetId = list[0].sheetId, sn = list[0].tab;
+      return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + sheetId + "/values/" + encodeURIComponent(sn + "!A1:V300") + "?valueRenderOption=FORMULA")
+      .then(function(data){
+        var vals = data.values || [], used = {}, ranges = [];
+        list.forEach(function(p){
+          var rowIndex = -1;
+          for (var i=0;i<vals.length;i++){
+            if (used[i]) continue;
+            var a = (vals[i][0]||"").toString().trim(), b = (vals[i][1]||"").toString().trim();
+            if (a !== "" && !isNaN(a) && b === (p.nom||"").trim()) { rowIndex = i; break; }
+          }
+          if (rowIndex === -1) { notFound++; return; }
+          used[rowIndex] = true; removed++;
+          ranges = ranges.concat(rowClearRanges(vals[rowIndex], rowIndex + 1, sn));
+        });
+        if (!ranges.length) return null;
+        return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + sheetId + "/values:batchClear", "POST", {ranges: ranges});
+      }).catch(function(e){ errors.push(sn + " (" + e.message + ")"); });
     });
-    if (!ranges.length) { showToast("Aucune ligne trouvée dans le Sheet","error"); return; }
-    return fetch("https://sheets.googleapis.com/v4/spreadsheets/" + SHEET_ID + "/values:batchClear", {
-      method: "POST",
-      headers: {"Authorization":"Bearer "+S.gmailToken, "Content-Type":"application/json"},
-      body: JSON.stringify({ranges: ranges})
-    }).then(function(r){ return r.json(); })
-    .then(function(res){
-      if (res.error) { showToast("Erreur: "+res.error.message,"error"); return; }
-      S.selected.clear();
-      showToast("✅ " + (sel.length-notFound) + " prospect(s) supprimé(s)" + (notFound?" ("+notFound+" introuvable(s))":""),"success");
-      loadFromSheets();
-    });
-  }).catch(function(e){ showToast("Erreur réseau: "+e.message,"error"); });
+  }, Promise.resolve()).then(function(){
+    S.selected.clear();
+    if (errors.length) showToast("Erreur : " + errors.join(", "), "error");
+    else showToast("\u2705 " + removed + " prospect(s) supprim\u00e9(s)" + (notFound ? " (" + notFound + " introuvable(s))" : ""), "success");
+    loadFromSheets();
+  });
 }
 function updateStats(){
-  document.getElementById("s0").textContent=S.prospects.length;
-  document.getElementById("s1").textContent=S.prospects.filter(function(p){return["sent","discuss","confirmed"].includes(p.statut);}).length;
-  document.getElementById("s2").textContent=S.prospects.filter(function(p){return p.statut==="discuss";}).length;
-  document.getElementById("s3").textContent=S.prospects.filter(function(p){return p.statut==="confirmed";}).length;
+  document.getElementById("s0").textContent=regionProspects().length;
+  document.getElementById("s1").textContent=regionProspects().filter(function(p){return["sent","discuss","confirmed"].includes(p.statut);}).length;
+  document.getElementById("s2").textContent=regionProspects().filter(function(p){return p.statut==="discuss";}).length;
+  document.getElementById("s3").textContent=regionProspects().filter(function(p){return p.statut==="confirmed";}).length;
 }
 
 function checkRelances(){
-  var list=S.prospects.filter(needsRelance);
+  var list=regionProspects().filter(needsRelance);
   var sec=document.getElementById("rsec");
   if(!list.length){sec.style.display="none";return;}
   sec.style.display="block";
@@ -956,7 +960,7 @@ function checkRelances(){
 }
 
 function checkRecentReplies(){
-  var list=S.prospects.filter(function(p){return p.statut==="discuss";});
+  var list=regionProspects().filter(function(p){return p.statut==="discuss";});
   var sec=document.getElementById("discsec");
   if(!list.length){sec.style.display="none";return;}
   sec.style.display="block";
@@ -969,7 +973,7 @@ function checkRecentReplies(){
 function updateResponseRates(){
   var sec=document.getElementById("ratesec");
   var cats={};
-  S.prospects.forEach(function(p){
+  regionProspects().forEach(function(p){
     var k=getCatKey(p.cat);
     var label=getTagLabel(k);
     if(!cats[label]) cats[label]={sent:0,replied:0};
@@ -1108,7 +1112,7 @@ function sendCurrent(){
     } else {
       var item=S.queue[S.qIdx];
       item.prospect.statut="sent";item.prospect.dateEnvoi=new Date();
-      updateSheets(item.prospect, getActiveRegion()==="bc" ? "Envoye" : "Envoyé");
+      updateSheets(item.prospect, item.prospect.region==="bc" ? "Envoye" : "Envoyé");
       item.status="done";renderQueue();
       showToast("Email envoy\u00e9 \u00e0 "+item.prospect.nom,"success");
       S.qIdx++;setTimeout(showPreview,500);updateStats();updateResponseRates();
@@ -1144,7 +1148,7 @@ function checkAuth(){
     document.getElementById("abtn").textContent="\u2713 Connect\u00e9";
     document.getElementById("abtn").style.background="#27ae60";
     showToast("Gmail connect\u00e9 !","success");
-    loadRegions(); setTimeout(loadFromSheets,800);
+    loadRegions().then(loadFromSheets);
   });
   // Fallback: si le token est dans le hash de la page courante
   var hash=window.location.hash;
@@ -1158,7 +1162,7 @@ function checkAuth(){
   document.getElementById("abtn").style.background="#27ae60";
   window.location.hash="";
   showToast("Gmail connect\u00e9 !","success");
-  loadRegions(); setTimeout(loadFromSheets,800);
+  loadRegions().then(loadFromSheets);
 }
 
 function doSend(to,subject,body){
@@ -1190,12 +1194,13 @@ function updateSheets(prospect, statut) {
   var mm = String(today.getMonth()+1).padStart(2,"0");
   var yyyy = today.getFullYear();
   var dateStr = dd+"/"+mm+"/"+yyyy;
-  var sn = getActiveSheetName();
-  var isBC = getActiveRegion() === "bc";
+  var sn = prospect.tab || getActiveSheetName();
+  var sheetId = prospect.sheetId || SHEET_ID;
+  var isBC = prospect.region === "bc";
   var colStatutLetter = isBC ? "J" : "H";
   var colDateLetter = isBC ? "K" : "I";
 
-  fetch("https://sheets.googleapis.com/v4/spreadsheets/"+SHEET_ID+"/values/"+encodeURIComponent(sn+"!A1:B200"),{
+  fetch("https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values/"+encodeURIComponent(sn+"!A1:B200"),{
     headers:{"Authorization":"Bearer "+S.gmailToken}
   }).then(function(r){return r.json();})
   .then(function(data){
@@ -1215,7 +1220,7 @@ function updateSheets(prospect, statut) {
       {range: sn+"!"+colStatutLetter+rowIndex, values: [[statut]]},
       {range: sn+"!"+colDateLetter+rowIndex, values: [[dateStr]]}
     ];
-    fetch("https://sheets.googleapis.com/v4/spreadsheets/"+SHEET_ID+"/values:batchUpdate",{
+    fetch("https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values:batchUpdate",{
       method:"POST",
       headers:{"Authorization":"Bearer "+S.gmailToken,"Content-Type":"application/json"},
       body:JSON.stringify({data:reqs,valueInputOption:"RAW"})
