@@ -513,6 +513,23 @@ function getCatKey(cat) {
 function getTagClass(k) { return k==="hotel"?"th":k==="villa"?"tv":"te"; }
 function getTagLabel(k) { var m={hotel:"H\u00f4tel",villa:"Villa","3A":"Voitures","3B":"Gastro","3C":"Yacht","3D":"H\u00e9lico","3E":"Aviation","3F":"Spa"}; return m[k]||"Exp\u00e9rience"; }
 
+// ── Suivi d'ouverture (pixel via Apps Script) ──
+// Colle ici l'URL du web app Apps Script (se termine par /exec). Vide = pas de suivi.
+var TRACK_URL = "https://script.google.com/macros/s/AKfycbxtDG_5-lZ3y0U1f_QJdy3v6hwCZ_BG9_AQjtALEGACITlxJ7MHsFzbayBln5-5SYgS/exec";
+function trackKey(p){
+  var n = (p.nom||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  return ((p.sheetId||"")+"").slice(0,6)+"-"+n;
+}
+function pixelHTML(p){
+  if(!TRACK_URL || !p) return "";
+  return '<img src="'+TRACK_URL+'?o='+encodeURIComponent(trackKey(p))+'&s='+Date.now()+'" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px;">';
+}
+function fetchOpens(){
+  if(!TRACK_URL) return;
+  fetch(TRACK_URL+"?a=opens").then(function(r){return r.json();}).then(function(d){
+    S.opens = d || {}; render();
+  }).catch(function(){});
+}
 function b2h(text) {
   return text
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
@@ -527,7 +544,7 @@ function b2h(text) {
 var S = {
   prospects:[], filters:{region:"all",cat:"all",lang:"ENFR",statut:"all",search:""},
   selected:new Set(), queue:[], qIdx:0,
-  gmailToken:null, connected:false, isRelance:false, relanceId:null
+  gmailToken:null, connected:false, isRelance:false, relanceId:null, opens:{}
 };
 
 
@@ -648,7 +665,8 @@ function loadFromSheets() {
 function regionProspects(){
   return S.prospects.filter(function(p){ return S.filters.region === "all" || p.region === S.filters.region; });
 }
-function refreshPanels(){ updateStats(); checkRelances(); checkRecentReplies(); updateResponseRates(); }
+function refreshPanels(){ updateStats(); checkRelances(); checkRecentReplies(); updateResponseRates(); fetchOpens(); }
+if(TRACK_URL){ setInterval(fetchOpens, 120000); }
 
 // Ajoute un bouton de r\u00e9gion dans la barre
 function addRegionPill(key) {
@@ -896,7 +914,7 @@ function render(){
     var bl=rel?"Relance J+5":p.statut==="sent"?"Envoy\u00e9":p.statut==="discuss"?"En discussion":"\u00c0 envoyer";
     return '<div class="pitem'+(sel?" sel":"")+'" onclick="toggleSel('+p.id+')">' +
       '<div class="chk'+(sel?" on":"")+'">'+(sel?"\u2713":"")+'</div>' +
-      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+'</div></div>' +
+      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+(S.opens[trackKey(p)]?' \u00b7 \ud83d\udc41 lu \u00d7'+S.opens[trackKey(p)].c:'')+'</div></div>' +
       '<div class="tag '+getTagClass(k)+'">'+getTagLabel(k)+'</div>' +
       '<div class="'+bc+'">'+bl+'</div></div>';
   }).join("")||'<div class="empty"><div class="empty-icon">\ud83d\udd0d</div><p>Aucun prospect</p></div>';
@@ -1140,7 +1158,8 @@ function sendCurrent(){
   var sendBtn=document.getElementById("sendbtn");
   if(sendBtn){sendBtn.disabled=true;sendBtn.textContent="Envoi en cours...";}
 
-  doSend(to,subj,body).then(function(success){
+  var trackP = S.isRelance ? S.prospects.find(function(x){return x.id===S.relanceId;}) : (S.queue[S.qIdx]||{}).prospect;
+  doSend(to,subj,body,trackP).then(function(success){
     if(sendBtn){sendBtn.disabled=false;sendBtn.textContent="\u2709\ufe0f Envoyer";}
     if(!success){
       showToast("Envoi \u00e9chou\u00e9 \u2014 statut NON mis \u00e0 jour, r\u00e9essaie","error");
@@ -1210,9 +1229,9 @@ function checkAuth(){
   loadRegions().then(loadFromSheets);
 }
 
-function doSend(to,subject,body){
+function doSend(to,subject,body,prospect){
   if(!S.connected||!S.gmailToken){console.log("[D\u00c9MO] \u00c0:"+to+"\nObjet:"+subject+"\n\n"+body);return Promise.resolve(true);}
-  var htmlBody="<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;font-size:14px;line-height:1.8;color:#1a1a1a;\">"+b2h(body)+"</body></html>";
+  var htmlBody="<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;font-size:14px;line-height:1.8;color:#1a1a1a;\">"+b2h(body)+pixelHTML(prospect)+"</body></html>";
   var bnd="bnd_rova_"+Date.now();
   var raw=["From: RovaFilms <hello.rovafilms@gmail.com>","To: "+to,
     "Subject: =?UTF-8?B?"+btoa(unescape(encodeURIComponent(subject)))+"?=",
