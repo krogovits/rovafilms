@@ -13,8 +13,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .auth-status{font-size:12px;color:#888;display:flex;align-items:center;gap:6px}
 .dot{width:8px;height:8px;border-radius:50%;background:#e74c3c}
 .dot.on{background:#27ae60}
-.container{display:grid;grid-template-columns:400px 1fr;height:calc(100vh - 57px)}
-.left{background:#fff;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;overflow:hidden}
+.container{display:grid;grid-template-columns:var(--sw,400px) 1fr;height:calc(100vh - 57px)}
+.left{position:relative;background:#fff;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;overflow:hidden}
 .right{background:#fafafa;overflow-y:auto}
 .filters{padding:14px 16px;border-bottom:1px solid #eee}
 .flabel{font-size:11px;color:#999;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
@@ -34,6 +34,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .chk{width:17px;height:17px;border-radius:4px;border:1.5px solid #ccc;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;background:#fff}
 .chk.on{background:#27ae60;border-color:#27ae60;color:#fff}
 .pinfo{flex:1;min-width:0}
+#rsz{position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;z-index:50}
+#rsz:hover,#rsz.drag{background:rgba(201,168,76,.45)}
 .pname{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .psub{font-size:11px;color:#999;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tag{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;flex-shrink:0;white-space:nowrap}
@@ -185,6 +187,7 @@ body.dark .dlg.danger .dlg-ok{background:#c0392b;color:#fff}
 </div>
 <div class="container">
   <div class="left">
+    <div id="rsz" title="Glisse pour agrandir ou r&eacute;duire"></div>
     <div class="filters">
       <div class="flabel">R&eacute;gion</div>
       <div class="frow" id="rf">
@@ -530,6 +533,21 @@ function fmtRead(iso){
     return d.toLocaleDateString("fr-CA",{weekday:"short",day:"numeric",month:"short"})+" \u00e0 "+d.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"}).replace(/\u202f|\u00a0/g," ");
   }catch(e){return iso;}
 }
+(function(){
+  var KEY="rovafilms_sidebar_w";
+  function setW(w){ w=Math.max(320,Math.min(w,Math.round(window.innerWidth*0.7))); document.documentElement.style.setProperty("--sw",w+"px"); return w; }
+  try{ var saved=parseInt(localStorage.getItem(KEY),10); if(saved) setW(saved); }catch(e){}
+  document.addEventListener("DOMContentLoaded",function(){
+    var h=document.getElementById("rsz"); if(!h) return;
+    h.addEventListener("mousedown",function(e){
+      e.preventDefault(); h.classList.add("drag");
+      var w=0;
+      function mv(ev){ w=setW(ev.clientX); }
+      function up(){ document.removeEventListener("mousemove",mv); document.removeEventListener("mouseup",up); h.classList.remove("drag"); try{ if(w) localStorage.setItem(KEY,w); }catch(e){} }
+      document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
+    });
+  });
+})();
 function fetchOpens(){
   if(!TRACK_URL) return;
   fetch(TRACK_URL+"?a=opens").then(function(r){return r.json();}).then(function(d){
@@ -920,7 +938,7 @@ function render(){
     var bl=rel?"Relance J+5":p.statut==="sent"?"Envoy\u00e9":p.statut==="discuss"?"En discussion":"\u00c0 envoyer";
     return '<div class="pitem'+(sel?" sel":"")+'" onclick="toggleSel('+p.id+')">' +
       '<div class="chk'+(sel?" on":"")+'">'+(sel?"\u2713":"")+'</div>' +
-      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+''+'</div>'+(function(){var o=S.opens[trackKey(p)]; if(!o||!(p.statut==='sent'||p.statut==='discuss'))return ''; return '<div class="psub" style="color:#2ecc71;font-weight:600;">\ud83d\udc41 Lu \u00d7'+o.c+' \u00b7 derni\u00e8re lecture '+fmtRead(o.l)+'</div>';})()+'</div>' +
+      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+''+'</div>'+(function(){var o=S.opens[trackKey(p)]; if(!o||!(p.statut==='sent'||p.statut==='discuss'))return ''; return '<div class="psub" style="color:#2ecc71;font-weight:600;white-space:normal;overflow:visible;" title="Premi\u00e8re lecture : '+fmtRead(o.f)+'">\ud83d\udc41 Lu \u00d7'+o.c+' \u00b7 derni\u00e8re lecture '+fmtRead(o.l)+'</div>';})()+'</div>' +
       '<div class="tag '+getTagClass(k)+'">'+getTagLabel(k)+'</div>' +
       '<div class="'+bc+'">'+bl+'</div></div>';
   }).join("")||'<div class="empty"><div class="empty-icon">\ud83d\udd0d</div><p>Aucun prospect</p></div>';
