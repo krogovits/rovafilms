@@ -524,6 +524,12 @@ function pixelHTML(p){
   if(!TRACK_URL || !p) return "";
   return '<img src="'+TRACK_URL+'?o='+encodeURIComponent(trackKey(p))+'&s='+Date.now()+'" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px;">';
 }
+function fmtRead(iso){
+  try{
+    var d=new Date(iso);
+    return d.toLocaleDateString("fr-CA",{weekday:"short",day:"numeric",month:"short"})+" \u00e0 "+d.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"}).replace(/\u202f|\u00a0/g," ");
+  }catch(e){return iso;}
+}
 function fetchOpens(){
   if(!TRACK_URL) return;
   fetch(TRACK_URL+"?a=opens").then(function(r){return r.json();}).then(function(d){
@@ -914,7 +920,7 @@ function render(){
     var bl=rel?"Relance J+5":p.statut==="sent"?"Envoy\u00e9":p.statut==="discuss"?"En discussion":"\u00c0 envoyer";
     return '<div class="pitem'+(sel?" sel":"")+'" onclick="toggleSel('+p.id+')">' +
       '<div class="chk'+(sel?" on":"")+'">'+(sel?"\u2713":"")+'</div>' +
-      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+(S.opens[trackKey(p)]&&(p.statut==='sent'||p.statut==='discuss')?' <span style="color:#2ecc71;font-weight:600;">\u00b7 \ud83d\udc41 Lu \u00d7'+S.opens[trackKey(p)].c+'</span>':'')+'</div></div>' +
+      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+''+'</div>'+(function(){var o=S.opens[trackKey(p)]; if(!o||!(p.statut==='sent'||p.statut==='discuss'))return ''; return '<div class="psub" style="color:#2ecc71;font-weight:600;">\ud83d\udc41 Lu \u00d7'+o.c+' \u00b7 derni\u00e8re lecture '+fmtRead(o.l)+'</div>';})()+'</div>' +
       '<div class="tag '+getTagClass(k)+'">'+getTagLabel(k)+'</div>' +
       '<div class="'+bc+'">'+bl+'</div></div>';
   }).join("")||'<div class="empty"><div class="empty-icon">\ud83d\udd0d</div><p>Aucun prospect</p></div>';
