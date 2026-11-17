@@ -938,7 +938,7 @@ function render(){
     var bl=rel?"Relance J+5":p.statut==="sent"?"Envoy\u00e9":p.statut==="discuss"?"En discussion":"\u00c0 envoyer";
     return '<div class="pitem'+(sel?" sel":"")+'" onclick="toggleSel('+p.id+')">' +
       '<div class="chk'+(sel?" on":"")+'">'+(sel?"\u2713":"")+'</div>' +
-      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+''+'</div>'+(function(){var o=S.opens[trackKey(p)]; if(!o||!(p.statut==='sent'||p.statut==='discuss'))return ''; return '<div class="psub" style="color:#2ecc71;font-weight:600;white-space:normal;overflow:visible;" title="Premi\u00e8re lecture : '+fmtRead(o.f)+'">\ud83d\udc41 Lu \u00d7'+o.c+' \u00b7 derni\u00e8re lecture '+fmtRead(o.l)+'</div>';})()+'</div>' +
+      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+''+'</div>'+(function(){var o=S.opens[trackKey(p)]; if(!o||!(p.statut==='sent'||p.statut==='discuss'))return ''; var early=(o.e||0)>=o.c; return '<div class="psub" style="color:'+(early?'#e69a28':'#2ecc71')+';font-weight:600;white-space:normal;overflow:visible;" title="Premi\u00e8re lecture : '+fmtRead(o.f)+'">\ud83d\udc41 '+(early?'Ouvert \u00d7'+o.c+' juste apr\u00e8s l\'envoi (peut-\u00eatre toi) \u00b7 ':'Lu \u00d7'+o.c+' \u00b7 derni\u00e8re lecture ')+fmtRead(o.l)+'</div>';})()+'</div>' +
       '<div class="tag '+getTagClass(k)+'">'+getTagLabel(k)+'</div>' +
       '<div class="'+bc+'">'+bl+'</div></div>';
   }).join("")||'<div class="empty"><div class="empty-icon">\ud83d\udd0d</div><p>Aucun prospect</p></div>';
