@@ -446,6 +446,54 @@ var BODIES_BC = {
 };
 
 
+
+// ══ TEMPLATES 2027 (nov. 2026) ══════════════════════════════════
+// [Detail] = colonne DÉTAIL du Sheet (col. Q pour Québec/Paris/nouvelles régions, DISTINCTIVE FEATURE col. S pour Vancouver)
+// [Name] = premier mot de la colonne NOM CONTACT (vide = "Hi," / "Bonjour,")
+// Si le détail est vide, "[Detail]" / "[Détail]" reste dans le mail et l'envoi est bloqué tant qu'il n'est pas remplacé.
+function firstName(p){ return ((p.contact || "").trim().split(/\s+/)[0] || ""); }
+function detailOf(p, fr){ var d = (p.detail || "").trim(); return d || (fr ? "[Détail]" : "[Detail]"); }
+
+var MAIL_2027 = {
+  subjEN: function(p){ return p.nom + ": your visuals for 2027"; },
+  subjFR: function(p){ return p.nom + "\u00a0: vos visuels 2027"; },
+  EN: function(p){
+    var n = p.nom, fn = firstName(p);
+    return "Hi" + (fn ? " " + fn : "") + ",\n\n" +
+      detailOf(p, false) + " gave us **an idea for " + n + "**.\n\n" +
+      "Hotels like yours need **a constant flow of fresh visuals**.\n\n" +
+      "That's what we produce. We're Kevin and Valeria, a film and photography duo **with a background in visual effects on Hollywood films** like **Dune, Spider-Man**, etc., and in high-end editorial photography. A few days at your property means **months of content for your website, social channels, and booking platforms**.\n\n" +
+      "We work in **defined packages**, tailored to each property, usage rights included: photography, short-form videos and reels for social, a signature film of the property, and drone footage (when allowed).\n\n" +
+      "**Would you like us to send them over, along with a few ideas we have in mind for " + n + "?**" +
+      "\n\nKevin & Valeria\nRovaFilms | Canada, Europe & Destinations\nrovafilms.com\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*";
+  },
+  FR: function(p){
+    var n = p.nom, fn = firstName(p);
+    return "Bonjour" + (fn ? " " + fn : "") + ",\n\n" +
+      detailOf(p, true) + " nous a donné **une idée pour " + n + "**.\n\n" +
+      "Les hôtels comme le vôtre ont besoin **d'un flux constant de nouveaux visuels**.\n\n" +
+      "C'est ce que nous produisons. Nous sommes Kevin et Valeria, vidéaste et photographe, **avec un background en effets visuels sur des films hollywoodiens** comme **Dune, Spider-Man**, etc., et en photographie éditoriale haut de gamme. Quelques jours chez vous représentent **des mois de contenu pour votre site, vos réseaux et vos plateformes de réservation**.\n\n" +
+      "Nous proposons **des formules définies**, adaptées à chaque lieu, droits d'usage inclus\u00a0: photographie, vidéos courtes et reels pour les réseaux, un film signature du lieu et images drone (lorsque c'est autorisé).\n\n" +
+      "**Souhaitez-vous que nous vous les envoyions, avec quelques idées que nous avons en tête pour " + n + "\u00a0?**" +
+      "\n\nKevin & Valeria\nRovaFilms | Canada, Europe & Destinations\nrovafilms.com\n\n*P.S. Si nous n'avons pas contacté la bonne personne, une redirection rapide serait très appréciée.*";
+  }
+};
+
+// Paris : français uniquement
+var MAIL_PARIS = {
+  subjFR: function(p){ return "Les visuels 2027 de " + p.nom; },
+  FR: function(p){
+    var n = p.nom, fn = firstName(p);
+    return "Bonjour" + (fn ? " " + fn : "") + ",\n\n" +
+      detailOf(p, true) + " nous a donné **une idée pour " + n + "**.\n\n" +
+      "Les hôtels comme le vôtre ont besoin **d'un flux constant de nouveaux visuels**.\n\n" +
+      "C'est ce que nous produisons. Nous sommes Kevin et Valeria, vidéaste et photographe, **avec un background en effets visuels sur des films hollywoodiens** comme **Dune, Spider-Man**, etc., et en photographie éditoriale haut de gamme. Quelques jours chez vous représentent **des mois de contenu pour votre site, vos réseaux et vos plateformes de réservation**.\n\n" +
+      "Nous serons à Paris **du 15 au 19 décembre** et aimerions **consacrer ces dates à " + n + "**, dans le cadre d'une collaboration\u00a0: photographie, vidéos courtes et reels pour les réseaux, et un film signature du lieu, droits d'usage inclus.\n\n" +
+      "**Souhaitez-vous que nous vous envoyions quelques idées que nous avons en tête pour " + n + "\u00a0?**" +
+      "\n\nKevin & Valeria\nRovaFilms | Canada, Europe & Destinations\nrovafilms.com\n\n*P.S. Si nous n'avons pas contacté la bonne personne, une redirection rapide serait très appréciée.*";
+  }
+};
+
 var RELANCE = {
   EN: function(n) { return { subj: "Following up \u2014 " + n, body: "Hi,\n\nJust following up on my previous message. Happy to share those content ideas for **" + n + "** whenever the timing works.\n\nWarm regards,\n" + sigEN() }; },
   FR: function(n) { return { subj: "Suite \u00e0 mon message \u2014 " + n, body: "Bonjour,\n\nJe me permets de relancer suite \u00e0 mon message pr\u00e9c\u00e9dent. Je serais ravi de vous partager ces id\u00e9es de contenu pour **" + n + "** d\u00e8s que le moment est opportun.\n\nBien cordialement,\n" + sigFR() }; }
@@ -555,6 +603,7 @@ function parseProspectRows(values, key, R){
   var colContact = isBC ? 13 : 11;
   var colNotes = isBC ? 20 : 13;
   var colFeature = 18; // DISTINCTIVE FEATURE column (BC only)
+  var colDetail = isBC ? 18 : 16; // DÉTAIL de l'accroche : col. S (Vancouver) / col. Q (Québec, Paris, nouvelles régions)
   var rows = values.filter(function(r){ return r[1] && r[1].trim() && !isNaN((r[0]||"").toString().trim()) && (r[0]||"").toString().trim() !== ""; });
   return rows.map(function(row){
     var st = "todo";
@@ -571,7 +620,7 @@ function parseProspectRows(values, key, R){
     var numCol = (row[0]||"").toString().trim();
     return { id:0, nom:row[1]||"", cat:row[2]||"", region:key, sheetId:R.sheetId, tab:R.tab,
              email:row[colEmail]||"", statut:st, dateEnvoi:de, contact:row[colContact]||"", notes:row[colNotes]||"",
-             feature: isBC ? (row[colFeature]||"") : "", bcRow: isBC ? parseInt(numCol) : null };
+             feature: isBC ? (row[colFeature]||"") : "", detail: (row[colDetail]||"").toString().trim(), bcRow: isBC ? parseInt(numCol) : null };
   });
 }
 
@@ -1050,48 +1099,44 @@ function showPreview(){
     S.selected.clear(); render(); updateStats(); return;
   }
   var item=S.queue[S.qIdx], p=item.prospect, k=getCatKey(p.cat), lang=S.filters.lang;
-  var isBCProspect = p.region === "bc";
-  var tmpl;
-  if (isBCProspect) {
-    var bcCat = (k === "villa") ? "villa" : "hotel";
-    tmpl = {
-      EN: function(nom, feat) { return BODIES_BC[bcCat].EN(p); },
-      FR: function(nom, feat) { return BODIES_BC[bcCat].FR(p); }
-    };
-  } else {
-    tmpl = BODIES[k]||BODIES.hotel;
-  }
+  var isParis = p.region === "paris";
+  if (isParis) lang = "FR"; // Paris : mail en français uniquement
   item.status="sending"; renderQueue();
   document.getElementById("psec").style.display="block";
   document.getElementById("pname").textContent=p.nom;
   document.getElementById("pprog").textContent="("+(S.qIdx+1)+"/"+S.queue.length+")";
   document.getElementById("pto").value=p.email;
   var wrap=document.getElementById("pbodywrap");
+  var T = isParis ? MAIL_PARIS : MAIL_2027;
+  function box(id, txt){ return '<div class="pbody" id="'+id+'" contenteditable="false">'+esc(txt)+'</div>'; }
   if(lang==="ENFR"){
-    document.getElementById("psubj").value="A content idea for "+p.nom;
-    wrap.innerHTML='<div class="langlabel">English</div><div class="pbody" id="ben" contenteditable="false">'+tmpl.EN(p.nom,p.feature)+'</div><hr class="sep"><div class="langlabel">Fran\u00e7ais</div><div class="pbody" id="bfr" contenteditable="false">'+tmpl.FR(p.nom,p.feature)+'</div>';
+    document.getElementById("psubj").value=T.subjEN(p);
+    wrap.innerHTML='<div class="langlabel">English</div>'+box("ben",T.EN(p))+'<hr class="sep"><div class="langlabel">Fran\u00e7ais</div>'+box("bfr",T.FR(p));
   } else if(lang==="EN"){
-    document.getElementById("psubj").value="A content idea for "+p.nom;
-    wrap.innerHTML='<div class="pbody" id="ben" contenteditable="false">'+tmpl.EN(p.nom,p.feature)+'</div>';
+    document.getElementById("psubj").value=T.subjEN(p);
+    wrap.innerHTML=box("ben",T.EN(p));
   } else {
-    document.getElementById("psubj").value="Une id\u00e9e de contenu pour "+p.nom;
-    wrap.innerHTML='<div class="pbody" id="bfr" contenteditable="false">'+tmpl.FR(p.nom,p.feature)+'</div>';
+    document.getElementById("psubj").value=T.subjFR(p);
+    wrap.innerHTML=box("bfr",T.FR(p));
   }
 }
 
 function sendCurrent(){
   var to=document.getElementById("pto").value;
   var subj=document.getElementById("psubj").value;
-  var lang=S.filters.lang, body;
-  if(lang==="ENFR"){
-    var en=document.getElementById("ben")?document.getElementById("ben").innerText:"";
-    var fr=document.getElementById("bfr")?document.getElementById("bfr").innerText:"";
-    body=en+"\n\n---\n\n"+fr;
+  var body, benEl=document.getElementById("ben"), bfrEl=document.getElementById("bfr");
+  if(benEl && bfrEl){
+    body=benEl.innerText+"\n\n---\n\n"+bfrEl.innerText;
   } else {
     var el=document.getElementById("ben")||document.getElementById("bfr");
     body=el?el.innerText:"";
   }
 
+  if(/\[(Detail|Détail|Name|Prénom|Property Name|Nom de l'établissement)\]/.test(body+" "+subj)){
+    uiDialog({title:"Mail incomplet", icon:"\u270f\ufe0f", danger:true, cancel:false, ok:"OK",
+      html:"Le mail contient encore <b>[Detail]</b> ou <b>[Détail]</b>.<br>Clique sur <b>Modifier</b> pour l'écrire (6 à 8 mots max), ou remplis la colonne DÉTAIL du Google Sheet."});
+    return;
+  }
   var sendBtn=document.getElementById("sendbtn");
   if(sendBtn){sendBtn.disabled=true;sendBtn.textContent="Envoi en cours...";}
 
