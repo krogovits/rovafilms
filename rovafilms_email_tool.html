@@ -914,7 +914,7 @@ function render(){
     var bl=rel?"Relance J+5":p.statut==="sent"?"Envoy\u00e9":p.statut==="discuss"?"En discussion":"\u00c0 envoyer";
     return '<div class="pitem'+(sel?" sel":"")+'" onclick="toggleSel('+p.id+')">' +
       '<div class="chk'+(sel?" on":"")+'">'+(sel?"\u2713":"")+'</div>' +
-      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+(S.opens[trackKey(p)]?' \u00b7 \ud83d\udc41 lu \u00d7'+S.opens[trackKey(p)].c:'')+'</div></div>' +
+      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+(S.opens[trackKey(p)]?' <span style="color:#2ecc71;font-weight:600;">\u00b7 \ud83d\udc41 Lu \u00d7'+S.opens[trackKey(p)].c+'</span>':'')+'</div></div>' +
       '<div class="tag '+getTagClass(k)+'">'+getTagLabel(k)+'</div>' +
       '<div class="'+bc+'">'+bl+'</div></div>';
   }).join("")||'<div class="empty"><div class="empty-icon">\ud83d\udd0d</div><p>Aucun prospect</p></div>';
