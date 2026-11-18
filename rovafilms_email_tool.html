@@ -500,7 +500,7 @@ var MAIL_PARIS = {
 };
 
 // ── RELANCES (envoyées en réponse dans la conversation du premier mail) ──
-// Relance 1 : J+3 (jours ouvrés) après le mail ; Relance 2 : J+5 (jours ouvrés) après la relance 1
+// Relance 1 : J+3 apr\u00e8s le mail ; Relance 2 : J+5 apr\u00e8s la relance 1 (jours calendaires, comme les formules du Sheet)
 var SIG_TXT = "\n\nKevin & Valeria\nRovaFilms | Canada, Europe & Destinations\nrovafilms.com";
 var RELANCES = {
   1: {
@@ -689,12 +689,13 @@ function parseProspectRows(values, key, R){
   var colEmail = isBC ? 8 : 6;
   var colStatut = isBC ? 9 : 7;
   var colDate = isBC ? 10 : 8;
-  var colContact = isBC ? 13 : 11;
-  var colNotes = isBC ? 20 : 13;
-  var colFeature = 18; // DISTINCTIVE FEATURE column (BC only)
-  var colDetail = isBC ? 18 : 16;
-  var colR1 = isBC ? 23 : 17; // DATE RELANCE 1 : col. X (Vancouver) / col. R (autres)
-  var colR2 = isBC ? 24 : 18; // DATE RELANCE 2 : col. Y (Vancouver) / col. S (autres) // DÉTAIL de l'accroche : col. S (Vancouver) / col. Q (Québec, Paris, nouvelles régions)
+  // Colonnes (nov. 2026) : J/L = DATE RELANCE 1 (J+3), K/M = DATE RELANCE 2 (J+5) (formules)
+  var colContact = isBC ? 14 : 12;
+  var colNotes = isBC ? 21 : 14;
+  var colFeature = 19; // DISTINCTIVE FEATURE column (BC only, col. T)
+  var colDetail = isBC ? 19 : 17; // D\u00c9TAIL de l'accroche : col. T DISTINCTIVE FEATURE (Vancouver) / col. R (Qu\u00e9bec, Paris, nouvelles r\u00e9gions)
+  var colR1 = isBC ? 24 : 18; // RELANCE 1 ENVOY\u00c9E : col. Y (Vancouver) / col. S (autres)
+  var colR2 = isBC ? 25 : 19; // RELANCE 2 ENVOY\u00c9E : col. Z (Vancouver) / col. T (autres)
   var rows = values.filter(function(r){ return r[1] && r[1].trim() && !isNaN((r[0]||"").toString().trim()) && (r[0]||"").toString().trim() !== ""; });
   return rows.map(function(row){
     var st = "todo";
@@ -980,14 +981,12 @@ function getVisible() {
            (!S.filters.search||p.nom.toLowerCase().includes(S.filters.search));
   });
 }
-// Jours ouvr\u00e9s (lun-ven) \u00e9coul\u00e9s depuis une date
+// Jours (calendaires) \u00e9coul\u00e9s depuis une date
 function bdaysSince(d){
   if(!d) return 0;
   var a=new Date(d); a.setHours(0,0,0,0);
   var b=new Date(); b.setHours(0,0,0,0);
-  var n=0;
-  while(a<b){ a.setDate(a.getDate()+1); var w=a.getDay(); if(w!==0&&w!==6) n++; }
-  return n;
+  return Math.round((b-a)/864e5);
 }
 var RELANCE1_DAYS=3, RELANCE2_DAYS=5;
 // 0 = rien \u00e0 faire, 1 = relance 1 due (J+3 apr\u00e8s le mail), 2 = relance 2 due (J+5 apr\u00e8s la relance 1)
@@ -1117,7 +1116,7 @@ function checkRelances(){
   document.getElementById("rlist").innerHTML=list.map(function(p){
     var n=needsRelance(p), since=n===1?p.dateEnvoi:p.r1, days=bdaysSince(since);
     var what=n===1?"Mail envoy\u00e9":"Relance 1 envoy\u00e9e";
-    return '<div class="rcard"><div class="rdot"></div><div><div style="font-size:13px;font-weight:600">'+p.nom+'</div><div style="font-size:11px;color:#999">'+what+' il y a '+days+' jour'+(days>1?"s":"")+' ouvr\u00e9'+(days>1?"s":"")+'</div></div><button class="btn-relance" onclick="openRelance('+p.id+')">Envoyer relance '+n+'</button></div>';
+    return '<div class="rcard"><div class="rdot"></div><div><div style="font-size:13px;font-weight:600">'+p.nom+'</div><div style="font-size:11px;color:#999">'+what+' il y a '+days+' jour'+(days>1?"s":"")+'</div></div><button class="btn-relance" onclick="openRelance('+p.id+')">Envoyer relance '+n+'</button></div>';
   }).join("");
 }
 
@@ -1415,8 +1414,8 @@ function updateRelanceSheet(prospect, n){
   if (!S.connected || !S.gmailToken) return;
   var t=new Date(), dateStr=String(t.getDate()).padStart(2,"0")+"/"+String(t.getMonth()+1).padStart(2,"0")+"/"+t.getFullYear();
   var sn=prospect.tab, sheetId=prospect.sheetId, isBC=prospect.region==="bc";
-  var colStatut=isBC?"J":"H", colR=isBC?(n===2?"Y":"X"):(n===2?"S":"R");
-  var headTxt=n===2?"DATE RELANCE 2 (J+5)":"DATE RELANCE 1 (J+3)";
+  var colStatut=isBC?"J":"H", colR=isBC?(n===2?"Z":"Y"):(n===2?"T":"S");
+  var headTxt=(n===2?"RELANCE 2 ENVOY":"RELANCE 1 ENVOY")+(isBC?"EE":"\u00c9E");
   gapi("https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values/"+encodeURIComponent(sn+"!A1:Z300")).then(function(data){
     var vals=data.values||[], rowIndex=-1;
     for(var i=0;i<vals.length;i++){
