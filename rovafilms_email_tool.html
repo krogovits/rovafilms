@@ -217,7 +217,8 @@ body.dark .dlg.danger .dlg-ok{background:#c0392b;color:#fff}
       <div class="frow" id="sf">
         <div class="pill active" data-v="all" onclick="setF('statut',this)">Tous</div>
         <div class="pill" data-v="todo" onclick="setF('statut',this)">&Agrave; envoyer</div>
-        <div class="pill" data-v="relance" onclick="setF('statut',this)">Relances J+5</div>
+        <div class="pill" data-v="relance1" onclick="setF('statut',this)">Relance J+3</div>
+        <div class="pill" data-v="relance2" onclick="setF('statut',this)">Relance 2 (J+5)</div>
       </div>
       <input class="search" placeholder="Rechercher..." oninput="doSearch(this.value)">
     </div>
@@ -253,7 +254,7 @@ body.dark .dlg.danger .dlg-ok{background:#c0392b;color:#fff}
         <div id="disclist"></div>
       </div>
       <div id="rsec" style="display:none">
-        <div class="stitle">&#9200; Relances J+5 en attente</div>
+        <div class="stitle">&#9200; Relances en attente</div>
         <div id="rlist"></div>
       </div>
       <div id="bsec" style="display:none">
@@ -498,9 +499,38 @@ var MAIL_PARIS = {
   }
 };
 
-var RELANCE = {
-  EN: function(n) { return { subj: "Following up \u2014 " + n, body: "Hi,\n\nJust following up on my previous message. Happy to share those content ideas for **" + n + "** whenever the timing works.\n\nWarm regards,\n" + sigEN() }; },
-  FR: function(n) { return { subj: "Suite \u00e0 mon message \u2014 " + n, body: "Bonjour,\n\nJe me permets de relancer suite \u00e0 mon message pr\u00e9c\u00e9dent. Je serais ravi de vous partager ces id\u00e9es de contenu pour **" + n + "** d\u00e8s que le moment est opportun.\n\nBien cordialement,\n" + sigFR() }; }
+// ── RELANCES (envoyées en réponse dans la conversation du premier mail) ──
+// Relance 1 : J+3 (jours ouvrés) après le mail ; Relance 2 : J+5 (jours ouvrés) après la relance 1
+var SIG_TXT = "\n\nKevin & Valeria\nRovaFilms | Canada, Europe & Destinations\nrovafilms.com";
+var RELANCES = {
+  1: {
+    FR: function(p, isParis){ var fn=firstName(p);
+      return "Bonjour" + (fn ? " " + fn : "") + ",\n\n" +
+        "Nous revenons vers vous au sujet de notre message ci-dessous.\n\n" +
+        "Pour vous donner une idée concrète, sur quelques jours chez vous, nous pourrions réaliser **des reels et vidéos courtes, une série de photos de vos chambres et espaces, et un film signature du lieu**, pensés pour **vos réseaux, votre site et vos plateformes de réservation**.\n\n" +
+        (isParis ? "Nos dates à Paris, **du 15 au 19 décembre**, sont encore ouvertes.\n\n" : "") +
+        "**Seriez-vous partants pour en discuter ?**\n\nBien cordialement," + SIG_TXT; },
+    EN: function(p){ var fn=firstName(p);
+      return "Hi" + (fn ? " " + fn : "") + ",\n\n" +
+        "Following up on our message below.\n\n" +
+        "To give you a concrete idea: over a few days at your property, we could create **reels and short videos, a photo series of your rooms and spaces, and a signature film of the property**, designed for **your social channels, website, and booking platforms**.\n\n" +
+        "**Would you be open to discussing it?**\n\nBest regards," + SIG_TXT; }
+  },
+  2: {
+    FR: function(p, isParis){ var fn=firstName(p);
+      return "Bonjour" + (fn ? " " + fn : "") + ",\n\n" +
+        "Un dernier message de notre part, pour ne pas encombrer votre boîte.\n\n" +
+        "Si une collaboration " + (isParis ? "**du 15 au 19 décembre** " : "") + "ne tombe pas au bon moment, aucun souci : **une réponse rapide, même négative, nous aide beaucoup** à nous organiser.\n\n" +
+        (isParis ? "**Ces dates pourraient-elles vous convenir ?**" : "**Seriez-vous ouverts à une collaboration ?**") +
+        "\n\nBien cordialement," + SIG_TXT +
+        "\n\n*P.S. Si nous n'avons pas contacté la bonne personne, une redirection rapide serait très appréciée.*"; },
+    EN: function(p){ var fn=firstName(p);
+      return "Hi" + (fn ? " " + fn : "") + ",\n\n" +
+        "One last note from us, so we don't clutter your inbox.\n\n" +
+        "If a collaboration isn't the right fit right now, no problem at all: **a quick reply, even a no, really helps us plan**.\n\n" +
+        "**Would you be open to a collaboration?**\n\nBest regards," + SIG_TXT +
+        "\n\n*P.S. If we haven't reached the right person, a quick redirect would be much appreciated.*"; }
+  }
 };
 
 function getCatKey(cat) {
@@ -524,9 +554,20 @@ function trackKey(p){
   var n = (p.nom||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
   return ((p.sheetId||"")+"").slice(0,6)+"-"+n;
 }
-function pixelHTML(p){
+function pixelHTML(p, suffix){
   if(!TRACK_URL || !p) return "";
-  return '<img src="'+TRACK_URL+'?o='+encodeURIComponent(trackKey(p))+'&s='+Date.now()+'" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px;">';
+  return '<img src="'+TRACK_URL+'?o='+encodeURIComponent(trackKey(p)+(suffix||""))+'&s='+Date.now()+'" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px;">';
+}
+function openLine(o, label, fem){
+  if(!o) return "";
+  var early=(o.e||0)>=o.c;
+  return '<div class="psub" style="color:'+(early?'#e69a28':'#2ecc71')+';font-weight:600;white-space:normal;overflow:visible;" title="Premi\u00e8re lecture : '+fmtRead(o.f)+'">\ud83d\udc41 '+label+' '+
+    (early?'ouvert'+(fem?'e':'')+' \u00d7'+o.c+' juste apr\u00e8s l\'envoi (peut-\u00eatre toi) \u00b7 ':(fem?'lue':'lu')+' \u00d7'+o.c+' \u00b7 derni\u00e8re lecture ')+fmtRead(o.l)+'</div>';
+}
+function openLines(p){
+  if(!(p.statut==='sent'||p.statut==='discuss')) return '';
+  var k=trackKey(p);
+  return openLine(S.opens[k],'Mail',false)+openLine(S.opens[k+'-r1'],'Relance 1',true)+openLine(S.opens[k+'-r2'],'Relance 2',true);
 }
 function fmtRead(iso){
   try{
@@ -632,11 +673,17 @@ function resolveRegionSheet(key){
 // Lit les prospects d'une r\u00e9gion -> Promise<array>
 function fetchRegionProspects(key){
   return resolveRegionSheet(key).then(function(R){
-    return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + R.sheetId + "/values/" + encodeURIComponent(R.tab + "!A3:V200"))
+    return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + R.sheetId + "/values/" + encodeURIComponent(R.tab + "!A3:Z200"))
       .then(function(data){ return parseProspectRows(data.values || [], key, R); });
   });
 }
 
+function parseFrDate(v){
+  var t = (v||"").toString().trim().split("/");
+  if (t.length !== 3) return null;
+  var d = new Date(parseInt(t[2],10), parseInt(t[1],10)-1, parseInt(t[0],10));
+  return isNaN(d.getTime()) ? null : d;
+}
 function parseProspectRows(values, key, R){
   var isBC = key === "bc";
   var colEmail = isBC ? 8 : 6;
@@ -645,12 +692,14 @@ function parseProspectRows(values, key, R){
   var colContact = isBC ? 13 : 11;
   var colNotes = isBC ? 20 : 13;
   var colFeature = 18; // DISTINCTIVE FEATURE column (BC only)
-  var colDetail = isBC ? 18 : 16; // DÉTAIL de l'accroche : col. S (Vancouver) / col. Q (Québec, Paris, nouvelles régions)
+  var colDetail = isBC ? 18 : 16;
+  var colR1 = isBC ? 23 : 17; // DATE RELANCE 1 : col. X (Vancouver) / col. R (autres)
+  var colR2 = isBC ? 24 : 18; // DATE RELANCE 2 : col. Y (Vancouver) / col. S (autres) // DÉTAIL de l'accroche : col. S (Vancouver) / col. Q (Québec, Paris, nouvelles régions)
   var rows = values.filter(function(r){ return r[1] && r[1].trim() && !isNaN((r[0]||"").toString().trim()) && (r[0]||"").toString().trim() !== ""; });
   return rows.map(function(row){
     var st = "todo";
     var sr = (row[colStatut]||"").toLowerCase().trim();
-    if (sr === "envoy\u00e9" || sr === "envoye" || sr === "relance j+5" || sr === "relance") st="sent";
+    if (sr === "envoy\u00e9" || sr === "envoye" || sr.indexOf("relanc") === 0) st="sent";
     else if (sr === "en discussion") st="discuss";
     else if (sr.includes("confirm")) st="confirmed";
     else if (sr === "\u00e0 envoyer" || sr === "a envoyer" || sr === "") st="todo";
@@ -659,10 +708,12 @@ function parseProspectRows(values, key, R){
       var p = row[colDate].toString().split("/");
       if (p.length===3) de = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
     }
+    var r1 = parseFrDate(row[colR1]), r2 = parseFrDate(row[colR2]);
+    if (!r1 && sr === "relance j+5") r1 = de; // ancien syst\u00e8me : la relance J+5 \u00e9crasait la date d'envoi
     var numCol = (row[0]||"").toString().trim();
     return { id:0, nom:row[1]||"", cat:row[2]||"", region:key, sheetId:R.sheetId, tab:R.tab,
              email:row[colEmail]||"", statut:st, dateEnvoi:de, contact:row[colContact]||"", notes:row[colNotes]||"",
-             feature: isBC ? (row[colFeature]||"") : "", detail: (row[colDetail]||"").toString().trim(), bcRow: isBC ? parseInt(numCol) : null };
+             feature: isBC ? (row[colFeature]||"") : "", detail: (row[colDetail]||"").toString().trim(), r1:r1, r2:r2, bcRow: isBC ? parseInt(numCol) : null };
   });
 }
 
@@ -868,7 +919,7 @@ function createRegion(name) {
       {requests:[{updateSheetProperties:{properties:{sheetId:keep.sheetId, title:tabTitle}, fields:"title"}}]});
   })
   .then(function(){
-    return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + sheetId + "/values/" + encodeURIComponent(tabTitle + "!A1:V300") + "?valueRenderOption=FORMULA");
+    return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + sheetId + "/values/" + encodeURIComponent(tabTitle + "!A1:Z300") + "?valueRenderOption=FORMULA");
   })
   .then(function(d){
     // on vide tous les prospects copi\u00e9s (lignes dont la colonne A est un num\u00e9ro), sans toucher aux formules
@@ -922,13 +973,30 @@ function getVisible() {
       (S.filters.cat==="exp"&&k!=="hotel"&&k!=="villa");
     var stOk = true;
     if (S.filters.statut==="todo") stOk=p.statut==="todo";
-    else if (S.filters.statut==="relance") stOk=needsRelance(p);
+    else if (S.filters.statut==="relance1") stOk=needsRelance(p)===1;
+    else if (S.filters.statut==="relance2") stOk=needsRelance(p)===2;
     return (S.filters.region==="all"||p.region===S.filters.region) &&
            catOk && stOk &&
            (!S.filters.search||p.nom.toLowerCase().includes(S.filters.search));
   });
 }
-function needsRelance(p){ return p.statut==="sent"&&p.dateEnvoi&&(Date.now()-new Date(p.dateEnvoi))/864e5>=5; }
+// Jours ouvr\u00e9s (lun-ven) \u00e9coul\u00e9s depuis une date
+function bdaysSince(d){
+  if(!d) return 0;
+  var a=new Date(d); a.setHours(0,0,0,0);
+  var b=new Date(); b.setHours(0,0,0,0);
+  var n=0;
+  while(a<b){ a.setDate(a.getDate()+1); var w=a.getDay(); if(w!==0&&w!==6) n++; }
+  return n;
+}
+var RELANCE1_DAYS=3, RELANCE2_DAYS=5;
+// 0 = rien \u00e0 faire, 1 = relance 1 due (J+3 apr\u00e8s le mail), 2 = relance 2 due (J+5 apr\u00e8s la relance 1)
+function needsRelance(p){
+  if(p.statut!=="sent"||!p.dateEnvoi) return 0;
+  if(!p.r1) return bdaysSince(p.dateEnvoi)>=RELANCE1_DAYS ? 1 : 0;
+  if(!p.r2) return bdaysSince(p.r1)>=RELANCE2_DAYS ? 2 : 0;
+  return 0;
+}
 
 function render(){
   var vis=getVisible();
@@ -936,10 +1004,11 @@ function render(){
   var html=vis.map(function(p){
     var k=getCatKey(p.cat), sel=S.selected.has(p.id), rel=needsRelance(p);
     var bc=rel?"badge brelance":p.statut==="sent"?"badge bsent":p.statut==="discuss"?"badge bdiscuss":"badge btodo";
-    var bl=rel?"Relance J+5":p.statut==="sent"?"Envoy\u00e9":p.statut==="discuss"?"En discussion":"\u00c0 envoyer";
+    var sentLbl=p.r2?"Relanc\u00e9 \u00d72":p.r1?"Relanc\u00e9 \u00d71":"Envoy\u00e9";
+    var bl=rel===1?"Relance J+3":rel===2?"Relance 2":p.statut==="sent"?sentLbl:p.statut==="discuss"?"En discussion":"\u00c0 envoyer";
     return '<div class="pitem'+(sel?" sel":"")+'" onclick="toggleSel('+p.id+')">' +
       '<div class="chk'+(sel?" on":"")+'">'+(sel?"\u2713":"")+'</div>' +
-      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+''+'</div>'+(function(){var o=S.opens[trackKey(p)]; if(!o||!(p.statut==='sent'||p.statut==='discuss'))return ''; var early=(o.e||0)>=o.c; return '<div class="psub" style="color:'+(early?'#e69a28':'#2ecc71')+';font-weight:600;white-space:normal;overflow:visible;" title="Premi\u00e8re lecture : '+fmtRead(o.f)+'">\ud83d\udc41 '+(early?'Ouvert \u00d7'+o.c+' juste apr\u00e8s l\'envoi (peut-\u00eatre toi) \u00b7 ':'Lu \u00d7'+o.c+' \u00b7 derni\u00e8re lecture ')+fmtRead(o.l)+'</div>';})()+'</div>' +
+      '<div class="pinfo"><div class="pname">'+p.nom+'</div><div class="psub">'+(p.email||"\u2014")+''+'</div>'+openLines(p)+'</div>' +
       '<div class="tag '+getTagClass(k)+'">'+getTagLabel(k)+'</div>' +
       '<div class="'+bc+'">'+bl+'</div></div>';
   }).join("")||'<div class="empty"><div class="empty-icon">\ud83d\udd0d</div><p>Aucun prospect</p></div>';
@@ -965,11 +1034,11 @@ function colLetter(n){ var s=""; n=n+1; while(n>0){ var m=(n-1)%26; s=String.fro
 // Plages \u00e0 vider pour une ligne : B..V, sauf la colonne A (num\u00e9ro) et les formules (ex: date de relance)
 function rowClearRanges(row, r, sn){
   var out = [], start = -1;
-  for (var c=1; c<=22; c++){
+  for (var c=1; c<=25; c++){
     var cell = (c < row.length && row[c] != null) ? row[c].toString() : "";
     var isFormula = cell.charAt(0) === "=";
     if (!isFormula && start === -1) start = c;
-    if ((isFormula || c === 22) && start !== -1) {
+    if ((isFormula || c === 25) && start !== -1) {
       var end = isFormula ? c-1 : c;
       if (end >= start) out.push(sn + "!" + colLetter(start) + r + ":" + colLetter(end) + r);
       start = -1;
@@ -1008,7 +1077,7 @@ function doDeleteSelected(sel){
   Object.keys(groups).reduce(function(chain, g){
     return chain.then(function(){
       var list = groups[g], sheetId = list[0].sheetId, sn = list[0].tab;
-      return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + sheetId + "/values/" + encodeURIComponent(sn + "!A1:V300") + "?valueRenderOption=FORMULA")
+      return gapi("https://sheets.googleapis.com/v4/spreadsheets/" + sheetId + "/values/" + encodeURIComponent(sn + "!A1:Z300") + "?valueRenderOption=FORMULA")
       .then(function(data){
         var vals = data.values || [], used = {}, ranges = [];
         list.forEach(function(p){
@@ -1046,8 +1115,9 @@ function checkRelances(){
   if(!list.length){sec.style.display="none";return;}
   sec.style.display="block";
   document.getElementById("rlist").innerHTML=list.map(function(p){
-    var days=Math.round((Date.now()-new Date(p.dateEnvoi))/864e5);
-    return '<div class="rcard"><div class="rdot"></div><div><div style="font-size:13px;font-weight:600">'+p.nom+'</div><div style="font-size:11px;color:#999">Envoy\u00e9 il y a '+days+' jour'+(days>1?"s":"")+'</div></div><button class="btn-relance" onclick="openRelance('+p.id+')">Envoyer relance</button></div>';
+    var n=needsRelance(p), since=n===1?p.dateEnvoi:p.r1, days=bdaysSince(since);
+    var what=n===1?"Mail envoy\u00e9":"Relance 1 envoy\u00e9e";
+    return '<div class="rcard"><div class="rdot"></div><div><div style="font-size:13px;font-weight:600">'+p.nom+'</div><div style="font-size:11px;color:#999">'+what+' il y a '+days+' jour'+(days>1?"s":"")+' ouvr\u00e9'+(days>1?"s":"")+'</div></div><button class="btn-relance" onclick="openRelance('+p.id+')">Envoyer relance '+n+'</button></div>';
   }).join("");
 }
 
@@ -1084,29 +1154,76 @@ function updateResponseRates(){
   }).join("");
 }
 
+// Décode le base64url de Gmail en texte UTF-8
+function b64uDecode(d){ try{ return decodeURIComponent(escape(atob(d.replace(/-/g,"+").replace(/_/g,"/")))); }catch(e){ return ""; } }
+function findPart(part, mime){
+  if(!part) return null;
+  if(part.mimeType===mime && part.body && part.body.data) return part;
+  var ps=part.parts||[];
+  for(var i=0;i<ps.length;i++){ var r=findPart(ps[i],mime); if(r) return r; }
+  return null;
+}
+function hdr(msg, name){
+  var hs=(msg.payload&&msg.payload.headers)||[];
+  for(var i=0;i<hs.length;i++) if(hs[i].name.toLowerCase()===name.toLowerCase()) return hs[i].value;
+  return "";
+}
+// Retrouve la conversation du premier mail envoyé à ce prospect -> infos pour répondre dedans
+function findThread(p){
+  var q="in:sent to:"+p.email.trim();
+  return gapi("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5&q="+encodeURIComponent(q))
+  .then(function(d){
+    if(!d.messages||!d.messages.length) return null;
+    return gapi("https://gmail.googleapis.com/gmail/v1/users/me/threads/"+d.messages[0].threadId+"?format=full");
+  }).then(function(t){
+    if(!t||!t.messages||!t.messages.length) return null;
+    var first=t.messages[0], last=t.messages[t.messages.length-1];
+    var ids=t.messages.map(function(m){return hdr(m,"Message-ID")||hdr(m,"Message-Id");}).filter(Boolean);
+    var htmlP=findPart(last.payload,"text/html"), txtP=findPart(last.payload,"text/plain");
+    var html=htmlP?b64uDecode(htmlP.body.data):"";
+    var mb=html.match(/<body[^>]*>([\s\S]*)<\/body>/i); if(mb) html=mb[1];
+    html=html.replace(/<img[^>]*script\.google\.com[^>]*>/gi,""); // retire les pixels de suivi cités
+    var subj=(hdr(first,"Subject")||"").replace(/^(re|tr|fwd?)\s*:\s*/i,"");
+    return { threadId:t.id, inReplyTo:ids[ids.length-1]||"", references:ids.join(" "), subject:subj,
+             date:hdr(last,"Date"), from:hdr(last,"From"), quoteHtml:html, quoteText:txtP?b64uDecode(txtP.body.data):"" };
+  }).catch(function(e){ console.error("findThread",e); return null; });
+}
+
 function openRelance(id){
   var p=S.prospects.find(function(x){return x.id===id;});
   if(!p)return;
-  S.isRelance=true; S.relanceId=id;
-  var lang=S.filters.lang;
-  var rEN=RELANCE.EN(p.nom), rFR=RELANCE.FR(p.nom);
+  var n=needsRelance(p)||(p.r1?2:1);
+  S.isRelance=true; S.relanceId=id; S.relanceN=n; S.relanceThread=null;
+  var lang=S.filters.lang, isParis=p.region==="paris";
+  if(isParis) lang="FR";
+  S.relanceLang=lang;
+  var T=RELANCES[n];
   document.getElementById("emptystate").style.display="none";
   document.getElementById("bsec").style.display="none";
   document.getElementById("psec").style.display="block";
-  document.getElementById("pname").textContent=p.nom+" \u2014 Relance J+5";
+  document.getElementById("pname").textContent=p.nom+" — Relance "+n+" (recherche du mail d'origine...)";
   document.getElementById("pprog").textContent="";
   document.getElementById("pto").value=p.email;
   var wrap=document.getElementById("pbodywrap");
-  if(lang==="ENFR"){
-    document.getElementById("psubj").value=rEN.subj;
-    wrap.innerHTML='<div class="langlabel">English</div><div class="pbody" id="ben" contenteditable="false">'+rEN.body+'</div><hr class="sep"><div class="langlabel">Fran\u00e7ais</div><div class="pbody" id="bfr" contenteditable="false">'+rFR.body+'</div>';
-  } else if(lang==="EN"){
-    document.getElementById("psubj").value=rEN.subj;
-    wrap.innerHTML='<div class="pbody" id="ben" contenteditable="false">'+rEN.body+'</div>';
-  } else {
-    document.getElementById("psubj").value=rFR.subj;
-    wrap.innerHTML='<div class="pbody" id="bfr" contenteditable="false">'+rFR.body+'</div>';
-  }
+  function box(bid, txt){ return '<div class="pbody" id="'+bid+'" contenteditable="false">'+esc(txt)+'</div>'; }
+  if(lang==="ENFR") wrap.innerHTML='<div class="langlabel">English</div>'+box("ben",T.EN(p))+'<hr class="sep"><div class="langlabel">Français</div>'+box("bfr",T.FR(p,isParis));
+  else if(lang==="EN") wrap.innerHTML=box("ben",T.EN(p));
+  else wrap.innerHTML=box("bfr",T.FR(p,isParis));
+  var M=isParis?MAIL_PARIS:MAIL_2027;
+  var fallbackSubj=(lang==="FR"||!M.subjEN)?M.subjFR(p):M.subjEN(p);
+  document.getElementById("psubj").value="Re: "+fallbackSubj;
+  var sendBtn=document.getElementById("sendbtn"); if(sendBtn) sendBtn.disabled=true;
+  findThread(p).then(function(th){
+    if(S.relanceId!==id) return;
+    if(sendBtn) sendBtn.disabled=false;
+    if(th){
+      S.relanceThread=th;
+      document.getElementById("psubj").value="Re: "+th.subject;
+      document.getElementById("pname").textContent=p.nom+" — Relance "+n+" (en réponse dans la conversation)";
+    } else {
+      document.getElementById("pname").textContent=p.nom+" — Relance "+n+" ⚠️ mail d'origine introuvable : partira comme nouveau mail";
+    }
+  });
 }
 
 function startBatch(){
@@ -1184,7 +1301,8 @@ function sendCurrent(){
   if(sendBtn){sendBtn.disabled=true;sendBtn.textContent="Envoi en cours...";}
 
   var trackP = S.isRelance ? S.prospects.find(function(x){return x.id===S.relanceId;}) : (S.queue[S.qIdx]||{}).prospect;
-  doSend(to,subj,body,trackP).then(function(success){
+  var sendOpts = S.isRelance ? {trackSuffix:"-r"+S.relanceN, thread:S.relanceThread, lang:S.relanceLang==="EN"?"EN":"FR"} : {};
+  doSend(to,subj,body,trackP,sendOpts).then(function(success){
     if(sendBtn){sendBtn.disabled=false;sendBtn.textContent="\u2709\ufe0f Envoyer";}
     if(!success){
       showToast("Envoi \u00e9chou\u00e9 \u2014 statut NON mis \u00e0 jour, r\u00e9essaie","error");
@@ -1192,9 +1310,9 @@ function sendCurrent(){
     }
     if(S.isRelance){
       var p=S.prospects.find(function(x){return x.id===S.relanceId;});
-      if(p){p.statut="sent";p.dateEnvoi=new Date();updateSheets(p,"Relance J+5");}
+      if(p){p.statut="sent"; if(S.relanceN===2) p.r2=new Date(); else p.r1=new Date(); updateRelanceSheet(p,S.relanceN);}
       render();checkRelances();checkRecentReplies();updateResponseRates();updateStats();
-      showToast("Relance envoy\u00e9e","success");
+      showToast("Relance "+S.relanceN+" envoy\u00e9e","success");
       document.getElementById("psec").style.display="none";
       document.getElementById("emptystate").style.display="block";
       S.isRelance=false;
@@ -1254,28 +1372,66 @@ function checkAuth(){
   loadRegions().then(loadFromSheets);
 }
 
-function doSend(to,subject,body,prospect){
+function quoteHead(th, lang){
+  var d=new Date(th.date); var ok=!isNaN(d.getTime());
+  if(lang==="EN") return "On "+(ok?d.toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"}):th.date)+", "+th.from+" wrote:";
+  return "Le "+(ok?d.toLocaleString("fr-FR",{dateStyle:"long",timeStyle:"short"}):th.date)+", "+th.from+" a \u00e9crit\u00a0:";
+}
+function quoteBlockHTML(th, lang){
+  if(!th||!th.quoteHtml) return "";
+  return '<br><div class="gmail_quote"><div>'+quoteHead(th,lang).replace(/</g,"&lt;").replace(/>/g,"&gt;")+'</div><blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">'+th.quoteHtml+'</blockquote></div>';
+}
+function quoteBlockText(th, lang){
+  if(!th||!th.quoteText) return "";
+  return "\n\n"+quoteHead(th,lang)+"\n"+th.quoteText.split(/\r?\n/).map(function(l){return "> "+l;}).join("\n");
+}
+function doSend(to,subject,body,prospect,opts){
+  opts=opts||{};
   if(!S.connected||!S.gmailToken){console.log("[D\u00c9MO] \u00c0:"+to+"\nObjet:"+subject+"\n\n"+body);return Promise.resolve(true);}
-  var htmlBody="<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;font-size:14px;line-height:1.8;color:#1a1a1a;\">"+b2h(body)+pixelHTML(prospect)+"</body></html>";
+  var htmlBody="<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;font-size:14px;line-height:1.8;color:#1a1a1a;\">"+b2h(body)+pixelHTML(prospect,opts.trackSuffix)+quoteBlockHTML(opts.thread,opts.lang)+"</body></html>";
+  var textBody=body+quoteBlockText(opts.thread,opts.lang);
   var bnd="bnd_rova_"+Date.now();
-  var raw=["From: RovaFilms <hello.rovafilms@gmail.com>","To: "+to,
+  var th=opts.thread;
+  var raw=["From: RovaFilms <hello.rovafilms@gmail.com>","To: "+to].concat(th&&th.inReplyTo?["In-Reply-To: "+th.inReplyTo,"References: "+th.references]:[]).concat([
     "Subject: =?UTF-8?B?"+btoa(unescape(encodeURIComponent(subject)))+"?=",
     "MIME-Version: 1.0","Content-Type: multipart/alternative; boundary=\""+bnd+"\"","",
     "--"+bnd,"Content-Type: text/plain; charset=UTF-8","Content-Transfer-Encoding: base64","",
-    btoa(unescape(encodeURIComponent(body))),"",
+    btoa(unescape(encodeURIComponent(textBody))),"",
     "--"+bnd,"Content-Type: text/html; charset=UTF-8","Content-Transfer-Encoding: base64","",
-    btoa(unescape(encodeURIComponent(htmlBody))),"","--"+bnd+"--"].join("\n");
+    btoa(unescape(encodeURIComponent(htmlBody))),"","--"+bnd+"--"]).join("\n");
   var encoded=btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
   return fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{
     method:"POST",
     headers:{"Authorization":"Bearer "+S.gmailToken,"Content-Type":"application/json"},
-    body:JSON.stringify({raw:encoded})
+    body:JSON.stringify(th&&th.threadId?{raw:encoded,threadId:th.threadId}:{raw:encoded})
   }).then(function(r){
     if(!r.ok){showToast("Erreur Gmail \u2014 email NON envoy\u00e9","error");return false;}
     return true;
   }).catch(function(){showToast("Erreur r\u00e9seau \u2014 email NON envoy\u00e9","error");return false;});
 }
 
+// Relance : statut "Relanc\u00e9" + date dans DATE RELANCE 1 (col. R) ou 2 (col. S) ; Vancouver : X / Y. Ne touche pas \u00e0 la date d'envoi.
+function updateRelanceSheet(prospect, n){
+  if (!S.connected || !S.gmailToken) return;
+  var t=new Date(), dateStr=String(t.getDate()).padStart(2,"0")+"/"+String(t.getMonth()+1).padStart(2,"0")+"/"+t.getFullYear();
+  var sn=prospect.tab, sheetId=prospect.sheetId, isBC=prospect.region==="bc";
+  var colStatut=isBC?"J":"H", colR=isBC?(n===2?"Y":"X"):(n===2?"S":"R");
+  var headTxt=n===2?"DATE RELANCE 2 (J+5)":"DATE RELANCE 1 (J+3)";
+  gapi("https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values/"+encodeURIComponent(sn+"!A1:Z300")).then(function(data){
+    var vals=data.values||[], rowIndex=-1;
+    for(var i=0;i<vals.length;i++){
+      var a=(vals[i][0]||"").toString().trim(), b=(vals[i][1]||"").toString().trim();
+      if(a!==""&&!isNaN(a)&&b===prospect.nom){ rowIndex=i+1; break; }
+    }
+    if(rowIndex===-1){ console.log("Prospect non trouv\u00e9 dans Sheets: "+prospect.nom); return; }
+    var colIdx=colR.charCodeAt(0)-65;
+    var reqs=[{range:sn+"!"+colStatut+rowIndex, values:[["Relanc\u00e9"]]},{range:sn+"!"+colR+rowIndex, values:[[dateStr]]}];
+    var head=(vals[1]&&vals[1][colIdx])?vals[1][colIdx].toString().trim():"";
+    if(!head) reqs.push({range:sn+"!"+colR+"2", values:[[headTxt]]}); // en-t\u00eate ajout\u00e9 automatiquement (ligne 2)
+    return gapi("https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values:batchUpdate","POST",{data:reqs,valueInputOption:"RAW"});
+  }).then(function(){ console.log("Sheets relance "+n+" OK: "+prospect.nom); })
+  .catch(function(e){ console.error("Sheets relance fail:",e); showToast("Relance envoy\u00e9e mais Sheet non mis \u00e0 jour","error"); });
+}
 function updateSheets(prospect, statut) {
   if (!S.connected || !S.gmailToken) return;
   var today = new Date();
